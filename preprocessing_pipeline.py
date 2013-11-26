@@ -24,7 +24,9 @@ def sentence_per_line(input_path, output_path):
 
         for line in inp:
             if has_seen_end_tag:
-                if '.' in line or '?' in line or '!' in line:
+                line = line.replace("?",".")
+                line = line.replace("!",".")
+                if '.' in line:
                     line = line.split('.')
                     line[-1] = line[-1].strip('\n')
                     if current_line:
