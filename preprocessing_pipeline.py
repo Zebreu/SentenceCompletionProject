@@ -28,7 +28,7 @@ def sentence_per_line(input_path, output_path):
                 line = line.replace("!",".")
                 if '.' in line:
                     line = line.split('.')
-                    line[-1] = line[-1].strip('\n')
+                    line[-1] = line[-1].strip('\n\r')
                     if current_line:
                         current_line += " " + line[0]
                     else:
@@ -40,7 +40,7 @@ def sentence_per_line(input_path, output_path):
                 elif end_end_tag in line:
                     pass
                 else:
-                    line = line.strip('\n')
+                    line = line.strip('\n\r')
                     if current_line:
                         current_line += " " + line
                     else:
