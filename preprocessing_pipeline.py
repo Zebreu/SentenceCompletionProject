@@ -3,6 +3,8 @@ import re
 import string
 import sys
 from lib.stemming.porter2 import stem
+import nltk
+
 
 def sentence_per_line(input_path, output_path):
     """takes an input file and outputs a file where each line contains one sentence
@@ -24,8 +26,8 @@ def sentence_per_line(input_path, output_path):
 
         for line in inp:
             if has_seen_end_tag:
-                line = line.replace("?",".")
-                line = line.replace("!",".")
+                line = line.replace("?", ".")
+                line = line.replace("!", ".")
                 if '.' in line:
                     line = line.split('.')
                     line[-1] = line[-1].strip('\n\r')
@@ -49,6 +51,7 @@ def sentence_per_line(input_path, output_path):
                 if end_tag in line:
                     has_seen_end_tag = True
 
+
 def remove_uppercase(input_path, output_path):
     """switch to lowercase letters the content of an input file and put the result in an output file
 
@@ -61,8 +64,23 @@ def remove_uppercase(input_path, output_path):
             out.write(line.lower())
 
 
-def remove_names(input_path, output_path):  # TODO
-    pass
+def remove_names(input_path, output_path):
+    """remove proper names from an input file and put the result in an output file
+
+    Warning:
+    Will not work properly if remove_uppercase filter is applied first
+
+    Keyword arguments:
+    input_path -- input file path
+    output_path -- output file path
+    """
+    with open(input_path) as inp, open(output_path, 'w') as out:
+        for line in inp:
+            line = nltk.word_tokenize(line)
+            tagged_line = nltk.pos_tag(line)
+            line_names_removed = [word if tag not in ['NNP', 'NNPS', 'PRP', 'PRP$'] else 'Jhon'
+                                  for word, tag in tagged_line]
+            out.write(" ".join(line_names_removed)+'\n')
 
 
 def remove_numbers(input_path, output_path):
@@ -116,7 +134,7 @@ if __name__ == "__main__":
                 "remove_numbers -- replace each number with '7'\n" \
                 "remove_punctuation\n" \
                 "filter_stem -- reduce the words to their stem\n\n" \
-                "Example usage: \npython preprocessing_pipeline.py -f input.txt sentence_per_line remove_numbers  filter_stem"
+                "Example usage: \npython preprocessing_pipeline.py -f input.txt sentence_per_line filter_stem"
     parser = OptionParser(usage=help_text)
     parser.add_option("-f", "--file", dest="file", help="use FILE as input")
     (options, args) = parser.parse_args()
