@@ -80,7 +80,11 @@ def remove_names(input_path, output_path):
             tagged_line = nltk.pos_tag(line)
             line_names_removed = [word if tag not in ['NNP', 'NNPS', 'PRP', 'PRP$'] else 'John'
                                   for word, tag in tagged_line]
-            out.write(" ".join(line_names_removed)+'\n')
+            line_names_removed = " ".join(line_names_removed)
+            #tokenization caused words like won't/can't to be replaced by wo n't/ca n't,
+            #the following line fixes it
+            line_names_removed = re.sub(r"([\w]+) n't", r"\1n't", line_names_removed)
+            out.write(line_names_removed+'\n')
 
 
 def remove_determiner(input_path, output_path):
