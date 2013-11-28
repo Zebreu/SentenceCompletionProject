@@ -65,10 +65,10 @@ def remove_uppercase(input_path, output_path):
 
 
 def remove_names(input_path, output_path):
-    """remove proper names from an input file and put the result in an output file
+    """replace proper names from an input file with the word 'John'
 
     Warning:
-    Will not work properly if remove_uppercase filter is applied first
+    Is very likely not to work well if any filter besides sentence_per_line is applied before this one
 
     Keyword arguments:
     input_path -- input file path
@@ -78,9 +78,24 @@ def remove_names(input_path, output_path):
         for line in inp:
             line = nltk.word_tokenize(line)
             tagged_line = nltk.pos_tag(line)
-            line_names_removed = [word if tag not in ['NNP', 'NNPS', 'PRP', 'PRP$'] else 'Jhon'
+            line_names_removed = [word if tag not in ['NNP', 'NNPS', 'PRP', 'PRP$'] else 'John'
                                   for word, tag in tagged_line]
             out.write(" ".join(line_names_removed)+'\n')
+
+
+def remove_determiner(input_path, output_path):
+    """remove determiners from an input file and put the result in an output file
+
+    Keyword arguments:
+    input_path -- input file path
+    output_path -- output file path
+    """
+    with open(input_path) as inp, open(output_path, 'w') as out:
+        for line in inp:
+            determiners = ['a', 'an', 'another', 'any', 'both', 'each', 'either', 'every', 'neither', 'that', 'the', 'these',
+                           'this', 'those']
+            line = [word for word in line.split() if word not in determiners]
+            out.write(" ".join(line)+'\n')
 
 
 def remove_numbers(input_path, output_path):
@@ -122,7 +137,8 @@ def filter_stem(input_path, output_path):
             out.write(line+'\n')
 
 PIPELINE = {'sentence_per_line': sentence_per_line, 'remove_uppercase': remove_uppercase, 'remove_names': remove_names,
-            'remove_numbers': remove_numbers, 'remove_punctuation': remove_punctuation, 'filter_stem': filter_stem}
+            'remove_numbers': remove_numbers, 'remove_punctuation': remove_punctuation, 'filter_stem': filter_stem,
+            'remove_determiner': remove_determiner}
 
 if __name__ == "__main__":
     help_text = "This script allows preprocessing of datasets. Preprocessing operations are defined as filters.\n" \
@@ -133,6 +149,8 @@ if __name__ == "__main__":
                 "remove_uppercase\n" \
                 "remove_numbers -- replace each number with '7'\n" \
                 "remove_punctuation\n" \
+                "remove_names -- replace proper nouns and pronouns with word 'John'\n" \
+                "remove_determiner\n" \
                 "filter_stem -- reduce the words to their stem\n\n" \
                 "Example usage: \npython preprocessing_pipeline.py -f input.txt sentence_per_line filter_stem"
     parser = OptionParser(usage=help_text)
