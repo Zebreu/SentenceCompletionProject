@@ -4,7 +4,7 @@ import string
 import sys
 from lib.stemming.porter2 import stem
 import nltk
-
+import os
 
 def sentence_per_line(input_path, output_path):
     """takes an input file and outputs a file where each line contains one sentence
@@ -164,9 +164,33 @@ if __name__ == "__main__":
     if not options.file:
         sys.exit('Error, no file was specified. Use -f to specify the file.')
     input_file = options.file
-    for i, arg in enumerate(args):
-        if arg not in PIPELINE:
-            sys.exit('Error, %s is not a valid pipe name.' % arg)
-        output_file = "%s_%d" % (options.file, i)
-        PIPELINE[arg](input_file, output_file)
-        input_file = output_file
+
+    all = False
+    if input_file == "all":
+        all = True
+
+    if not all:
+        for i, arg in enumerate(args):
+            if arg not in PIPELINE:
+                sys.exit('Error, %s is not a valid pipe name.' % arg)
+            if i == 4:
+                output_file = "%s_%s" % (options.file, "final.txt")
+            else:
+                output_file = "%s_%d" % (options.file, i)
+            PIPELINE[arg](input_file, output_file)
+            input_file = output_file
+    else:
+        filenames = os.listdir(".")
+        for filename in filenames:
+            if ".TXT" == filename[-4:]:
+                print filename
+                input_file = filename
+                for i, arg in enumerate(args):
+                    if arg not in PIPELINE:
+                        sys.exit('Error, %s is not a valid pipe name.' % arg)
+                    if i == len(args)-1:
+                        output_file = "%s_%s" % ("zzz_"+filename, "final.txt")
+                    else:
+                        output_file = "%s_%d" % (filename, i)
+                    PIPELINE[arg](input_file, output_file)
+                    input_file = output_file
