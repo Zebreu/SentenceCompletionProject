@@ -21,35 +21,36 @@ def sentence_per_line(input_path, output_path):
 
     end_end_tag = "End of The Project Gutenberg Etext"
 
+    sent_tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
+
     current_line = ""
     with open(input_path) as inp, open(output_path, 'w') as out:
-
         for line in inp:
-            if has_seen_end_tag:
-                line = line.replace("?", ".")
-                line = line.replace("!", ".")
-                if '.' in line:
-                    line = line.split('.')
-                    line[-1] = line[-1].strip('\n\r')
-                    if current_line:
-                        current_line += " " + line[0]
-                    else:
-                        current_line = line[0]
-                    out.write(current_line.strip() + '\n')
-                    for i in range(1, len(line)-1):
-                        out.write(line[i].strip() + '\n')
-                    current_line = line[-1]
-                elif end_end_tag in line:
-                    pass
+            if not has_seen_end_tag:
+                if end_tag not in line:
+                    continue
                 else:
-                    line = line.strip('\n\r')
-                    if current_line:
-                        current_line += " " + line
-                    else:
-                        current_line = line
-            else:
-                if end_tag in line:
                     has_seen_end_tag = True
+                    continue
+            if end_end_tag in line:
+                continue
+            if not line.strip():  # remove empty lines
+                continue
+
+            sentences = sent_tokenizer.tokenize(line)
+            if current_line:
+                sentences[0] = current_line + " " + sentences[0].strip()
+                current_line = ""
+            for i in range(len(sentences)-1):
+                out.write(sentences[i].strip() + '\n')
+            if sentences[-1].strip()[-1] in ['.', '?', '!']:
+                out.write(sentences[-1].strip() + '\n')
+                current_line = ""
+            else:
+                if current_line:
+                    current_line = current_line + " " + sentences[-1].strip()
+                else:
+                    current_line = sentences[-1].strip()
 
 
 def remove_uppercase(input_path, output_path):
@@ -96,8 +97,8 @@ def remove_determiner(input_path, output_path):
     """
     with open(input_path) as inp, open(output_path, 'w') as out:
         for line in inp:
-            determiners = ['a', 'an', 'another', 'any', 'both', 'each', 'either', 'every', 'neither', 'that', 'the', 'these',
-                           'this', 'those']
+            determiners = ['a', 'an', 'another', 'any', 'both', 'each', 'either', 'every', 'neither', 'that', 'the',
+                           'these', 'this', 'those']
             line = [word for word in line.split() if word not in determiners]
             out.write(" ".join(line)+'\n')
 
