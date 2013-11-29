@@ -173,8 +173,8 @@ if __name__ == "__main__":
         for i, arg in enumerate(args):
             if arg not in PIPELINE:
                 sys.exit('Error, %s is not a valid pipe name.' % arg)
-            if i == 4:
-                output_file = "%s_%s" % (options.file, "final.txt")
+            if i == len(args)-1:
+                output_file = "%s_%s" % ("zzz_"+options.file, "final.txt")
             else:
                 output_file = "%s_%d" % (options.file, i)
             PIPELINE[arg](input_file, output_file)
