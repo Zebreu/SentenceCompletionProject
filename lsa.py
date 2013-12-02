@@ -8,10 +8,13 @@ Created on 2013-11-24
 import numpy
 import math
 import scipy.sparse.linalg
+import scipy.stats
 #import pickle
 import os
 import sys
 import itertools
+import datetime
+
 
 class Lsa:
     def __init__(self):
@@ -19,23 +22,21 @@ class Lsa:
         
     def parse_documents(self, documents):
         """ Builds a dictionary of words encountered and in which sentences they are found """
-        #self.number_documents = len(documents)
-        self.number_documents = 0
+        documents = [document.split(" ") for document in documents if len(document.split(" ")) > 1] # Minimum length of sentence
+        self.number_documents = len(documents)
         for index,document in enumerate(documents):
-            words = document.split(" ")
-            if len(words) > 0:
-                self.number_documents += 1
-                for word in words:
-                    if word in self.dictionary:
-                        self.dictionary[word].append(index)
-                    else:
-                        self.dictionary[word] = [index]
+            words = document
+            for word in words:
+                if word in self.dictionary:
+                    self.dictionary[word].append(index)
+                else:
+                    self.dictionary[word] = [index]
                     
         
     
     def build_count_matrix(self, common_threshold = 100): # common_threshold argument is useless for now
         """ Builds a matrix Words*Sentences from the dictionary """
-        self.repeated_words = [word for word in self.dictionary.keys() if (len(self.dictionary[word])>1)]# and len(self.dictionary[word]) < self.number_documents*common_threshold)]
+        self.repeated_words = [word for word in self.dictionary.keys() if (len(self.dictionary[word])>5)]# and len(self.dictionary[word]) < self.number_documents*common_threshold)] # Min and max number of occurrences
         #print len(self.repeated_words)
         #print self.number_documents
         #print len(self.dictionary["the"])
@@ -43,22 +44,20 @@ class Lsa:
         self.count_matrix = scipy.sparse.lil_matrix((len(self.repeated_words),self.number_documents))
         #self.count_matrix = numpy.zeros((len(self.repeated_words),self.number_documents))
         length = len(self.repeated_words)
-        for index,word in enumerate(self.repeated_words):
-            sys.stdout.flush()
-            sys.stdout.write("\r"+str(round(float(index)/length,3))+"%")
+        print "Started at", str(datetime.datetime.now())
+        for index,word in enumerate(self.repeated_words):            
+            #pretty_counter(index,length)
             for document in self.dictionary[word]:
                 self.count_matrix[index,document] += 1
-
+        print "Ended at", str(datetime.datetime.now())
         #self.count_matrix = self.count_matrix.tocsc()
     
     def train(self, documents):
         self.parse_documents(documents)
         print "Dictionary size:", len(self.dictionary.keys())
         self.build_count_matrix()
-        print ""
         print "Reduced dictionary size:", len(self.repeated_words)
         print "Number of sentences:", self.number_documents
-        print ""
         
     def weighting_tfidf(self):
         """ Term frequency/Inverse document frequency weighting
@@ -73,15 +72,16 @@ class Lsa:
         print "Data entries to weight:", length
         number_documents_float = float(self.number_documents)
         counter = 0.0
+        print "Started at", str(datetime.datetime.now())
         for row,column,value in itertools.izip(temp_matrix.row, temp_matrix.col, temp_matrix.data):
-            sys.stdout.flush()
-            sys.stdout.write("\r"+str(round(counter/length,3))+"%")
+            #pretty_counter(counter, length)
             tf = value/column_sums[column]
             #print row_sums[row]
             #print number_documents_float/row_sums[row]
             idf = math.log(number_documents_float/row_sums[row])
             self.count_matrix[row,column] = tf*idf
             counter += 1.0
+        print "Ended at", str(datetime.datetime.now())
         """
         for row in xrange(self.count_matrix.shape[0]):
             for column in xrange(self.count_matrix.shape[1]):
@@ -89,10 +89,11 @@ class Lsa:
                 idf = math.log((float(self.number_documents))/row_sums[row])
                 self.count_matrix[row,column] = tf*idf
         """
-    def reduce_dimensionality(self):
+    def reduce_dimensionality(self, trim = 300):
         """ Trims down matrices to only use a small number of important dimensions """
-        trim = 200 # Better: Mathematical approximation (given size of singular values) or validation of hyper-parameter
+        print "Started at", str(datetime.datetime.now())
         self.words_u, self.singular_values, self.documents_vt = scipy.sparse.linalg.svds(self.count_matrix, trim)
+        print "Ended at", str(datetime.datetime.now())
         #self.words_u, self.singular_values, self.documents_vt = scipy.linalg.svd(self.count_matrix)
         print self.words_u.shape, self.singular_values.shape
         del self.documents_vt # Memory management
@@ -107,24 +108,42 @@ def cosine_similarity(word1, word2):
     """ Returns a value between -1 (opposite semantic properties) and 1 (identical properties) """
     return numpy.dot(word1,word2)/(numpy.linalg.norm(word1)*numpy.linalg.norm(word2))
 
-def score_average(sentence, position,lsa):
-    """ Score a sentence by computing the average similarity between the target word and the other words """
+def average_score(sentence, position,lsa):
+    """ Scores a sentence by computing the average similarity between the target word and the other words """
     score = 0
     sentence = sentence.replace("\n","")
     words = sentence.split(" ")
-    del words[0]
+    del words[0] # ID of the sentence
     target = lsa.repeated_words.index(words[position])
     target = lsa.word_vectors[target]
+    #print words[position]
     del(words[position])
     for word in words:
         score += cosine_similarity(target, lsa.word_vectors[lsa.repeated_words.index(word)])
     score = score/(len(words)+1)
     return score
 
-def test_sentences(sentences, lsa, score = score_average):
+def gaussian_score(sentence, position, lsa):
+    """ Scores a sentence with weighted similarities, a wide gaussian centered on the target word """
+    score = 0
+    sentence = sentence.replace("\n","")
+    words = sentence.split(" ")
+    del words[0] # ID of the sentence
+    target = lsa.repeated_words.index(words[position])
+    target = lsa.word_vectors[target]
+    #print words[position]
+    del(words[position])
+    gaussian = scipy.stats.norm(position,len(words)/3) # Standard deviation could change
+    for i,word in enumerate(words):
+        weight = gaussian.pdf(i-position)
+        score += weight*(cosine_similarity(target, lsa.word_vectors[lsa.repeated_words.index(word)]))
+    score = score/(len(words)+1)
+    return score     
+
+def test_sentences(sentences, lsa, score = average_score):
     """ Returns the scores for sentences, testing whether they are semantically compatible """
     position = 0
-    for word1, word2 in zip(sentences[0],sentences[1]):
+    for word1, word2 in zip(sentences[0].split(" ")[1:],sentences[1].split(" ")[1:]):
         if word1 == word2:
             position += 1
         else:
@@ -140,32 +159,34 @@ def test_whole(lsa, data = None):
         counter = 0
         question = []
         for line in openedfile:
-            if counter == 4:
+            if counter == 5:
                 sentences.append(question)
-                question = []
-                counter = 0
+                question = [line]
+                counter = 1
             else:
                 question.append(line)
                 counter += 1
+    sentences.append(question)
+    print len(sentences), "sets of sentences"
+
     with open("holmes_answers.txt") as openedfile:
         for line in openedfile:
             answer = line.split(" ")[0][-2]
             answers.append(answer_dictionary[answer])
-        
-    print len(answers)
-    print len(sentences)
+    
     predictions = []
     for i,question in enumerate(sentences):
-        print i
+        pretty_counter(i,len(answers))
         predictions.append(test_sentences(question, lsa))
-    
+        print predictions[-1], answers[i]
+        if i > 3:
+            crash
     #numpy.save("predictions", numpy.array(predictions))
     performance = 0
     for i,prediction in enumerate(predictions):
         answer = numpy.argmax(prediction)
         if answer == answers[i]:
             performance += 1
-    print "Tested", i, "questions"
     print float(performance)/i
 
 def read_files():
@@ -175,7 +196,7 @@ def read_files():
         if filename[-4:] == ".txt":
             with open(os.path.join("training",filename)) as openedfile:
                 #print filename
-                sentences.extend([line for line in openedfile])
+                sentences.extend([line.replace("\n","") for line in openedfile])
     return sentences
 
 def main():
