@@ -37,6 +37,9 @@ def sentence_per_line(input_path, output_path):
             if not line.strip():  # remove empty lines
                 continue
 
+            line = line.replace("Mr.","")
+            line = line.replace("Mrs.","")
+            line = line.replace("Dr.","")
             sentences = sent_tokenizer.tokenize(line)
             if current_line:
                 sentences[0] = current_line + " " + sentences[0].strip()
