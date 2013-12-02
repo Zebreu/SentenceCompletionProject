@@ -124,23 +124,23 @@ def average_score(sentence, position,lsa):
     return score
 
 def gaussian_score(sentence, position, lsa):
-    """ Scores a sentence with weighted similarities, a wide gaussian centered on the target word """
-    score = 0
-    sentence = sentence.replace("\n","")
-    words = sentence.split(" ")
-    del words[0] # ID of the sentence
-    target = lsa.repeated_words.index(words[position])
-    target = lsa.word_vectors[target]
-    #print words[position]
-    del(words[position])
-    gaussian = scipy.stats.norm(position,len(words)/3) # Standard deviation could change
-    for i,word in enumerate(words):
-        weight = gaussian.pdf(i-position)
-        score += weight*(cosine_similarity(target, lsa.word_vectors[lsa.repeated_words.index(word)]))
-    score = score/(len(words)+1)
-    return score     
+	""" Scores a sentence with weighted similarities, a wide gaussian centered on the target word """
+	score = 0
+	sentence = sentence.replace("\n","")
+	words = sentence.split(" ")
+	del words[0] # ID of the sentence
+	target = lsa.repeated_words.index(words[position])
+	target = lsa.word_vectors[target]
+	#print words[position]
+	del(words[position])
+	gaussian = scipy.stats.norm(position,len(words)/3) # Standard deviation could change
+	for i,word in enumerate(words):
+		weight = gaussian.pdf(i-position)
+		score += weight*(cosine_similarity(target, lsa.word_vectors[lsa.repeated_words.index(word)]))
+	score = score/(len(words)+1)
+	return score	 
 
-def test_sentences(sentences, lsa, score = average_score):
+def test_sentences(sentences, lsa, score = gaussian_score):
     """ Returns the scores for sentences, testing whether they are semantically compatible """
     position = 0
     for word1, word2 in zip(sentences[0].split(" ")[1:],sentences[1].split(" ")[1:]):
@@ -178,15 +178,14 @@ def test_whole(lsa, data = None):
     for i,question in enumerate(sentences):
         pretty_counter(i,len(answers))
         predictions.append(test_sentences(question, lsa))
-        print predictions[-1], answers[i]
-        if i > 3:
-            crash
+        #print predictions[-1], answers[i]
     #numpy.save("predictions", numpy.array(predictions))
     performance = 0
     for i,prediction in enumerate(predictions):
         answer = numpy.argmax(prediction)
         if answer == answers[i]:
             performance += 1
+    print
     print float(performance)/i
 
 def read_files():
