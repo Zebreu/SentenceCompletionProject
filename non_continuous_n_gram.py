@@ -1,8 +1,12 @@
 from optparse import OptionParser
+import os
+import re
 import shelve
 import string
+import sys
 
 DATABASE_PATH = 'non_continuous_n_gram'
+OPTIONS_PER_SENTENCE = 5
 
 
 def generate_combinations(l):
@@ -50,7 +54,20 @@ def print_database_content(sample_size=1000):
 
 if __name__ == "__main__":
     parser = OptionParser()
-    parser.add_option("-f", "--file", dest="file", help="use FILE as input")
+    parser.add_option("-f", "--file", dest="file",
+                      help="use FILE as input. If a directory is provided, every .txt file in the folder will be parsed")
     (options, args) = parser.parse_args()
-    train(options.file)
+    if not options.file:
+        sys.exit('Error, no file was specified. Use -f to specify the file.')
+    if os.path.isdir(options.file):
+        for root, dir, files in os.walk(options.file):
+            for file in files:
+                if os.path.splitext(file)[1].lower() == '.txt':
+                    print "processing %s..." % file
+                    train(os.path.join(root, file))
+        print "END"
+    elif os.path.isfile(options.file):
+        train(options.file)
+    else:
+        sys.exit('Error, %s is not a valid file or directory.' % options.file)
     print_database_content(20)
