@@ -72,6 +72,38 @@ def remove_names(input_path, output_path):
     """replace proper names from an input file with the word 'John'
 
     Warning:
+    Apply sentence_per_line and remove_determiner and remove_numbers before this one (and only those two), otherwise bad things will happen
+
+    Keyword arguments:
+    input_path -- input file path
+    output_path -- output file path
+    """
+    with open(input_path) as inp, open(output_path, 'w') as out:
+        for line in inp:
+            words = line.split(" ")
+            words[-1] = words[-1].replace("\n","")
+            words = [word.strip() for word in words]
+            line_names_removed = []
+            for i,word in enumerate(words):
+                if i == 0:
+                    #if not wordnet.synsets(word.lower()):
+                    #    line_names_removed.append("John")
+                    #else:
+                    line_names_removed.append(word)
+                    #Too aggressive right now
+                elif word == "7":
+                    line_names_removed.append(word)
+                elif word[0].islower():
+                    line_names_removed.append(word)
+                else:
+                    line_names_removed.append("John")
+            line_names_removed = " ".join(line_names_removed)
+            out.write(line_names_removed+'\n')
+
+def remove_names_old(input_path, output_path):
+    """replace proper names from an input file with the word 'John'
+
+    Warning:
     Is very likely not to work well if any filter besides sentence_per_line is applied before this one
 
     Keyword arguments:
@@ -92,6 +124,22 @@ def remove_names(input_path, output_path):
 
 
 def remove_determiner(input_path, output_path):
+    """remove determiners from an input file and put the result in an output file
+
+    - Seb: Also removes many stop words, taken from TextFixer
+
+    Keyword arguments:
+    input_path -- input file path
+    output_path -- output file path
+    """
+    with open(input_path) as inp, open(output_path, 'w') as out:
+        for line in inp:
+            determiners = ["a","able","about","across","after","all","almost","also","am","among","an","and","any","are","as","at","be","because","been","but","by","can","cannot","could","dear","did","do","does","either","else","ever","every","for","from","get","got","had","has","have","he","her","hers","him","his","how","however","i","if","in","into","is","it","its","just","least","let","like","likely","may","me","might","most","must","my","neither","no","nor","not","of","off","often","on","only","or","other","our","own","rather","said","say","says","she","should","since","so","some","than","that","the","their","them","then","there","these","they","this","tis","to","too","twas","us","wants","was","we","were","what","when","where","which","while","who","whom","why","will","with","would","yet","you","your"]
+            line = [word for word in line.split() if word.lower() not in determiners]
+            out.write(" ".join(line)+'\n')
+
+
+def remove_determiner_old(input_path, output_path):
     """remove determiners from an input file and put the result in an output file
 
     Keyword arguments:
@@ -153,7 +201,7 @@ if __name__ == "__main__":
                 "Filters are independent, therefore you can apply any number of filters in any order you want.\n" \
                 "Filters are passed as arguments to this script.\n" \
                 "Supported filters are:\n" \
-                "setence_per_line -- each line will contain a single sentence\n" \
+                "sentence_per_line -- each line will contain a single sentence\n" \
                 "remove_uppercase\n" \
                 "remove_numbers -- replace each number with '7'\n" \
                 "remove_punctuation\n" \
@@ -161,6 +209,7 @@ if __name__ == "__main__":
                 "remove_determiner\n" \
                 "filter_stem -- reduce the words to their stem\n\n" \
                 "Example usage: \npython preprocessing_pipeline.py -f input.txt sentence_per_line filter_stem"
+    # What I use: preprocessing_pipeline.py -f all sentence_per_line remove_determiner remove_numbers remove_names remove_uppercase remove_punctuation filter_stem
     parser = OptionParser(usage=help_text)
     parser.add_option("-f", "--file", dest="file", help="use FILE as input")
     (options, args) = parser.parse_args()
