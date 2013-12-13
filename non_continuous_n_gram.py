@@ -131,5 +131,7 @@ if __name__ == "__main__":
     pickle.dump(DATABASE, open('database.pickle', 'w'))
     if options.test_file:
         predictions = get_predictions(options.test_file)
-        success_rate = verify_predictions("answers_%s" % options.test_file, predictions)
+        test_dir, test_file = os.path.split(options.test_file)
+        answer_file = os.path.join(test_dir, "answers_%s" % test_file)
+        success_rate = verify_predictions(answer_file, predictions)
         print "success rate: %s" % success_rate
