@@ -46,7 +46,7 @@ class Lsa:
         length = len(self.repeated_words)
         print "Started at", str(datetime.datetime.now())
         for index,word in enumerate(self.repeated_words):            
-            #pretty_counter(index,length)
+            pretty_counter(index,length)
             for document in self.dictionary[word]:
                 self.count_matrix[index,document] += 1
         print "Ended at", str(datetime.datetime.now())
@@ -89,7 +89,7 @@ class Lsa:
                 idf = math.log((float(self.number_documents))/row_sums[row])
                 self.count_matrix[row,column] = tf*idf
         """
-    def reduce_dimensionality(self, trim = 300):
+    def reduce_dimensionality(self, trim = 250):
         """ Trims down matrices to only use a small number of important dimensions """
         print "Started at", str(datetime.datetime.now())
         self.words_u, self.singular_values, self.documents_vt = scipy.sparse.linalg.svds(self.count_matrix, trim)
@@ -108,7 +108,7 @@ def cosine_similarity(word1, word2):
     """ Returns a value between -1 (opposite semantic properties) and 1 (identical properties) """
     return numpy.dot(word1,word2)/(numpy.linalg.norm(word1)*numpy.linalg.norm(word2))
 
-def average_score(sentence, position,lsa):
+def average_score(sentence, position,lsa, sigma):
     """ Scores a sentence by computing the average similarity between the target word and the other words """
     score = 0
     sentence = sentence.replace("\n","")
@@ -123,7 +123,7 @@ def average_score(sentence, position,lsa):
     score = score/(len(words)+1)
     return score
 
-def gaussian_score(sentence, position, lsa):
+def gaussian_score(sentence, position, lsa, sigma):
 	""" Scores a sentence with weighted similarities, a wide gaussian centered on the target word """
 	score = 0
 	sentence = sentence.replace("\n","")
@@ -133,14 +133,14 @@ def gaussian_score(sentence, position, lsa):
 	target = lsa.word_vectors[target]
 	#print words[position]
 	del(words[position])
-	gaussian = scipy.stats.norm(position,len(words)/3) # Standard deviation could change
+	gaussian = scipy.stats.norm(position,sigma) # Standard deviation could change, (len(words)) dependent #(250<300, 5)
 	for i,word in enumerate(words):
 		weight = gaussian.pdf(i-position)
 		score += weight*(cosine_similarity(target, lsa.word_vectors[lsa.repeated_words.index(word)]))
 	score = score/(len(words)+1)
 	return score	 
 
-def test_sentences(sentences, lsa, score = gaussian_score):
+def test_sentences(sentences, lsa, sigma, score = gaussian_score):
     """ Returns the scores for sentences, testing whether they are semantically compatible """
     position = 0
     for word1, word2 in zip(sentences[0].split(" ")[1:],sentences[1].split(" ")[1:]):
@@ -149,9 +149,9 @@ def test_sentences(sentences, lsa, score = gaussian_score):
         else:
             break
         
-    return [score(sentence, position, lsa) for sentence in sentences]
+    return [score(sentence, position, lsa, sigma) for sentence in sentences]
 
-def test_whole(lsa, data = None):
+def test_whole(lsa, data = None, sigma = 4.5):
     sentences = []
     answers = []
     answer_dictionary = {"a": 0, "b": 1, "c": 2, "d": 3, "e": 4}
@@ -177,7 +177,7 @@ def test_whole(lsa, data = None):
     predictions = []
     for i,question in enumerate(sentences):
         pretty_counter(i,len(answers))
-        predictions.append(test_sentences(question, lsa))
+        predictions.append(test_sentences(question, lsa, sigma))
         #print predictions[-1], answers[i]
     #numpy.save("predictions", numpy.array(predictions))
     performance = 0
@@ -187,6 +187,7 @@ def test_whole(lsa, data = None):
             performance += 1
     print
     print float(performance)/i
+    return float(performance)/i
 
 def read_files():
     filenames = os.listdir("training")
@@ -219,7 +220,7 @@ def main():
         if filename[-4:] == ".txt":
             with open(os.path.join("training",filename)) as openedfile:
                 #print filename
-                sentences.extend([line for line in openedfile])
+                sentences.extend([line.replace("\n","") for line in openedfile])
          
     # LSA
     lsa = Lsa()
@@ -253,7 +254,10 @@ def main():
     print cosine_similarity(word1, word2)
     print cosine_similarity(word1, word3)
     """
-    numpy.save("word_vectors", lsa.word_vectors)
+    numpy.save("word_vectors_new_250", lsa.word_vectors)
+    numpy.save("word_table_new_250", lsa.repeated_words)
+    test_whole(lsa)
+    return lsa
     
 def loading():
     lsa = Lsa()
