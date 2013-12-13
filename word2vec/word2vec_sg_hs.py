@@ -90,7 +90,10 @@ except:
         for pos, word in enumerate(sentence):
             if word is None:
                 continue  # OOV word in the input sentence => skip
-            reduced_window = random.randint(model.window)  # `b` in the original word2vec code
+            if model.reduce > 0:
+                reduced_window = random.randint(model.window)  # `b` in the original word2vec code
+            else:
+                reduced_window = 0
 
             # now go over all words from the (reduced) window, predicting each one in turn
             start = max(0, pos - model.window + reduced_window)
@@ -134,7 +137,7 @@ class Word2Vec(utils.SaveLoad):
     compatible with the original word2vec implementation via `save_word2vec_format()` and `load_word2vec_format()`.
 
     """
-    def __init__(self, sentences=None, size=100, alpha=0.025, window=5, min_count=5, seed=1, workers=1, min_alpha=0.0001):
+    def __init__(self, sentences=None, size=100, alpha=0.025, window=5, min_count=5, seed=1, workers=1, min_alpha=0.0001, reduce=1, alpha_decay=1.0):
         """
         Initialize the model from an iterable of `sentences`. Each sentence is a
         list of words (utf8 strings) that will be used for training.
@@ -160,6 +163,8 @@ class Word2Vec(utils.SaveLoad):
         self.min_count = min_count
         self.workers = workers
         self.min_alpha = min_alpha
+        self.reduce = int(reduce)
+        self.alpha_decay = float(alpha_decay)
         if sentences is not None:
             self.build_vocab(sentences)
             self.train(sentences)
@@ -260,7 +265,7 @@ class Word2Vec(utils.SaveLoad):
                 if job is None:  # data finished, exit
                     break
                 # update the learning rate before every job
-                alpha = max(self.min_alpha, self.alpha * (1 - 1.0 * word_count[0] / total_words))
+                alpha = max(self.min_alpha, self.alpha * (1 - 1.0 * self.alpha_decay * word_count[0] / total_words))
                 # how many words did we train on? out-of-vocabulary (unknown) words do not count
                 #job_words = sum(train_sentence(self, sentence, alpha, work, self.algorithm) for sentence in job) #numpy
                 job_words = sum(train_sentence(self, sentence, alpha, work) for sentence in job) #cython

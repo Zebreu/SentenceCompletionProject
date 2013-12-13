@@ -73,7 +73,7 @@ try:
     # try to compile and use the faster cython version
     import pyximport
     pyximport.install(setup_args={"include_dirs": get_include()})
-    from word2vec_inner_cbow_hs import train_sentence, FAST_VERSION
+    from word2vec_inner_untitled_hs import train_sentence, FAST_VERSION
 except:
     # failed... fall back to plain numpy (20-80x slower training than the above)
     FAST_VERSION = -1
@@ -91,10 +91,68 @@ except:
             if word is None:
                 continue  # OOV word in the input sentence => skip
             if model.reduce > 0:
-                reduced_window = random.randint(model.window)  # `b` in the original word2vec code
+                reduced_half_bags = random.randint(model.half_bags)
             else:
-                reduced_window = 0
+                reduced_half_bags = 0
 
+            bags_before = min(model.half_bags - reduced_half_bags, (pos - 1)/model.words_per_bag + 1) #Verify?
+            bags_after = min(model.half_bags - reduced_half_bags, (len(sentence)-pos-2)/model.words_per_bag +1) #Verify?
+            
+            for bag_index in xrange(-bags_before,0):
+                start = max(0, pos + bag_index*model.words_per_bag)
+                end = pos + (bag_index+1)*model.words_per_bag
+                l1 = matutils.zeros_aligned((model.layer1_size), dtype=REAL)#Initialize input
+                count = 0
+                for pos2, word2 in enumerate(sentence[start: end], start):            
+                    if pos2 == pos or word2 is None:
+                        pass
+                    else:
+                        l1 = l1 + model.syn0[word2.index]                     
+                        count += 1
+                if count > 0:
+                    l1 = l1 / count #divide or not?
+                
+                l2a = model.syn1[word.point]  # 2d matrix, codelen x layer1_size
+                fa = 1.0 / (1.0 + exp(-dot(l1, l2a.T)))  #  propagate hidden -> output
+                ga = (1 - word.code - fa) * alpha  # vector of error gradients multiplied by the learning rate
+                model.syn1[word.point] += outer(ga, l1)  # learn hidden -> output
+
+                for pos2, word2 in enumerate(sentence[start: end], start):
+                    if pos2 == pos or word2 is None:
+                        pass
+                    else:
+                        model.syn0[word2.index] += dot(ga, l2a)
+            
+            for bag_index in xrange(0, bags_after):
+                start = pos + bag_index*model.words_per_bag + 1
+                end = min(len(sentence), pos + (bag_index+1) * model.words_per_bag + 1) #Verify?
+                l1 = matutils.zeros_aligned((model.layer1_size), dtype=REAL)#Initialize input
+                count = 0
+
+                for pos2, word2 in enumerate(sentence[start: end], start):            
+                    if pos2 == pos or word2 is None:
+                        pass
+                    else:
+                        l1 = l1 + model.syn0[word2.index]                     
+                        count += 1
+                if count > 0:
+                    l1 = l1 / count #divide or not?
+                
+                l2a = model.syn1[word.point]  # 2d matrix, codelen x layer1_size
+                fa = 1.0 / (1.0 + exp(-dot(l1, l2a.T)))  #  propagate hidden -> output
+                ga = (1 - word.code - fa) * alpha  # vector of error gradients multiplied by the learning rate
+                model.syn1[word.point] += outer(ga, l1)  # learn hidden -> output
+
+                for pos2, word2 in enumerate(sentence[start: end], start):
+                    if pos2 == pos or word2 is None:
+                        pass
+                    else:
+                        model.syn0[word2.index] += dot(ga, l2a)
+
+        return len([word for word in sentence if word is not None])
+         
+
+"""
             # Combine all surrounding words into an appropriate input
             start = max(0, pos - model.window + reduced_window)
             l1 = matutils.zeros_aligned((model.layer1_size), dtype=REAL)#Initialize input
@@ -121,6 +179,7 @@ except:
                     model.syn0[word2.index] += dot(ga, l2a)
 
         return len([word for word in sentence if word is not None])
+"""
 
 class Vocab(object):
     """A single vocabulary item, used internally for constructing binary trees (incl. both word leaves and inner nodes)."""
@@ -144,7 +203,7 @@ class Word2Vec(utils.SaveLoad):
     compatible with the original word2vec implementation via `save_word2vec_format()` and `load_word2vec_format()`.
 
     """
-    def __init__(self, sentences=None, size=100, alpha=0.025, window=5, min_count=5, seed=1, workers=1, min_alpha=0.0001, reduce=1, alpha_decay=1.0):
+    def __init__(self, sentences=None, size=100, alpha=0.025, half_bags=4, words_per_bag=5, min_count=5, seed=1, workers=1, min_alpha=0.0001, reduce=1, alpha_decay=1.0):
         """
         Initialize the model from an iterable of `sentences`. Each sentence is a
         list of words (utf8 strings) that will be used for training.
@@ -165,7 +224,8 @@ class Word2Vec(utils.SaveLoad):
         self.index2word = []  # map from a word's matrix index (int) to word (string)
         self.layer1_size = int(size)
         self.alpha = float(alpha)
-        self.window = int(window)
+        self.half_bags = int(half_bags)
+        self.words_per_bag = int(words_per_bag)
         self.seed = seed
         self.min_count = min_count
         self.workers = workers
@@ -274,6 +334,7 @@ class Word2Vec(utils.SaveLoad):
                     break
                 # update the learning rate before every job
                 alpha = max(self.min_alpha, self.alpha * (1 - 1.0 * self.alpha_decay * word_count[0] / total_words))
+                #alpha = max(self.min_alpha, self.alpha)
                 # how many words did we train on? out-of-vocabulary (unknown) words do not count
                 #job_words = sum(train_sentence(self, sentence, alpha, work, self.algorithm) for sentence in job) #numpy
                 job_words = sum(train_sentence(self, sentence, alpha, work, neu1) for sentence in job) #cython

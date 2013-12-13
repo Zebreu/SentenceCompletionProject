@@ -255,6 +255,7 @@ def train_sentence(model, sentence, alpha, _work, _neu1):
     cdef int neg_samples = model.neg_samples
     cdef int table_size = model.table_size
     cdef np.uint32_t *table = <np.uint32_t *>(np.PyArray_DATA(model.table))
+    cdef int reduce = model.reduce
 
     #cdef np.uint32_t *points[MAX_SENTENCE_LEN]
     #cdef np.uint8_t *codes[MAX_SENTENCE_LEN]
@@ -288,8 +289,10 @@ def train_sentence(model, sentence, alpha, _work, _neu1):
             codelens[i] = <int>len(word.code)
             #codes[i] = <np.uint8_t *>np.PyArray_DATA(word.code)
             #points[i] = <np.uint32_t *>np.PyArray_DATA(word.point)
-            #reduced_windows[i] = 0
-            reduced_windows[i] = np.random.randint(window)
+            if reduce > 0:
+                reduced_windows[i] = np.random.randint(window)
+            else:
+                reduced_windows[i] = 0
             result += 1
 
     # release GIL & train on the sentence
