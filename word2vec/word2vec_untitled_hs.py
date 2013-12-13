@@ -71,9 +71,9 @@ from gensim import utils, matutils  # utility fnc for pickling, common scipy ope
 try:
     #a = 1/0 #This line will be deleted. It introduces a voluntary error for testing.
     # try to compile and use the faster cython version
-    import pyximport
-    pyximport.install(setup_args={"include_dirs": get_include()})
-    from word2vec_inner_untitled_hs import train_sentence, FAST_VERSION
+	import pyximport
+	pyximport.install(setup_args={"include_dirs": get_include()})
+	from word2vec_inner_untitled_hs import train_sentence, FAST_VERSION
 except:
     # failed... fall back to plain numpy (20-80x slower training than the above)
     FAST_VERSION = -1
