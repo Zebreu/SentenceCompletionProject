@@ -5,6 +5,7 @@ import pickle
 import re
 import string
 import sys
+import numpy
 
 OPTIONS_PER_SENTENCE = 5
 DATABASE = {}
@@ -43,7 +44,8 @@ def train(dataset):
                     DATABASE[key] = 1
 
 
-def compute_score(option, words_in_sentence):
+def compute_score_simple(option, words_in_sentence):
+    """compute the number of times `option` appears with the words in `words_in_sentence` and returns the sum"""
     score = 0
     for word in words_in_sentence:
         key = string.join(sorted((option, word)))
@@ -52,21 +54,54 @@ def compute_score(option, words_in_sentence):
     return score
 
 
+def compute_distribution(word, options):
+    """compute the appearance of a word with all the other words in a list and normalize the result
+
+    Return value:
+    List containing the distribution of the appearance of the word `word` with all the other words in `options`
+    """
+    scores = []
+    for option in options:
+        key = string.join(sorted((option, word)))
+        if key in DATABASE:
+            score = DATABASE[key]
+        else:
+            score = 0
+        scores.append(score)
+    scores_total = sum(scores)
+    if scores_total != 0:
+        distribution = [score/scores_total for score in scores]
+    else:
+        distribution = scores
+    return distribution
+
+
 def get_best_option(options, words_in_sentence):
-    """returns the option from the list `options` which has the highest score for the words in `words_in_sentence`
+    """returns the option from the list `options` which has the highest score for the words in `words_in_sentence` using
+    2 different scoring heuristics
+
+    Return value:
+    A tuple of size two containing the best result for each scoring heuristics
     """
     best_score = 0
-    best_option = None
+    best_option_1 = None
     for option in options:
-        score = compute_score(option, words_in_sentence)
+        score = compute_score_simple(option, words_in_sentence)
         if score > best_score:
             best_score = score
-            best_option = option
-    return best_option
+            best_option_1 = option
+
+    score_vector = numpy.zeros(len(options))
+    for word in words_in_sentence:
+        distribution = compute_distribution(word, options)
+        score_vector += distribution
+    best_option_index = numpy.argmax(score_vector)
+    best_option_2 = options[best_option_index]
+    return best_option_1, best_option_2
 
 
 def get_predictions(test_data):
-    """compute predictions for the test set given as argument
+    """compute predictions for the test set given as argument using the two different scoring heuristics
     """
     with open(test_data) as f:
         i = 0
@@ -81,8 +116,8 @@ def get_predictions(test_data):
                 words_in_sentence = line.split()[1:]  # start from index 1 since 1st cell contains the question number
             elif i % OPTIONS_PER_SENTENCE == 4:
                 options.append(option)
-                best_option = get_best_option(options, words_in_sentence)
-                predictions.append(best_option)
+                best_option_1, best_option_2 = get_best_option(options, words_in_sentence)
+                predictions.append((best_option_1, best_option_2))
             else:
                 options.append(option)
             i += 1
@@ -90,15 +125,25 @@ def get_predictions(test_data):
 
 
 def verify_predictions(test_dataset_answers, predictions):
-    good_predictions = 0
+    """verify if our predictions are correct
+
+    Keyword arguments:
+    test_dataset_answers -- path of the file containing the answers
+    predictions -- values that were predicted
+    """
+    good_predictions_1 = 0
+    good_predictions_2 = 0
     with open(test_dataset_answers) as f:
         for i, line in enumerate(f):
             match = re.search('\[([\d\w\'\-,]+)\]', line)
             answer = match.group(1)
-            if predictions[i] == answer:
-                good_predictions += 1
-    success_rate = good_predictions/len(predictions)
-    return success_rate
+            if predictions[i][0] == answer:
+                good_predictions_1 += 1
+            if predictions[i][1] == answer:
+                good_predictions_2 += 1
+    success_rate_1 = good_predictions_1/len(predictions)
+    success_rate_2 = good_predictions_2/len(predictions)
+    return success_rate_1, success_rate_2
 
 
 def print_database_content(sample_size=1000):
@@ -134,4 +179,4 @@ if __name__ == "__main__":
         test_dir, test_file = os.path.split(options.test_file)
         answer_file = os.path.join(test_dir, "answers_%s" % test_file)
         success_rate = verify_predictions(answer_file, predictions)
-        print "success rate: %s" % success_rate
+        print "success rate: %s %s" % success_rate
