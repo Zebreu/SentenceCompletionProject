@@ -6,6 +6,8 @@
 #
 # Copyright (C) 2013 Radim Rehurek <me@radimrehurek.com>
 # Licensed under the GNU LGPL v2.1 - http://www.gnu.org/licenses/lgpl.html
+#
+# Modified by Sébastien Jean
 
 #Make neu1 replicate the behavior of work
 
@@ -28,10 +30,6 @@ ctypedef void (*saxpy_ptr) (const int *N, const float *alpha, const float *X, co
 ctypedef float (*sdot_ptr) (const int *N, const float *X, const int *incX, const float *Y, const int *incY) nogil
 ctypedef double (*dsdot_ptr) (const int *N, const float *X, const int *incX, const float *Y, const int *incY) nogil
 ctypedef double (*snrm2_ptr) (const int *N, const float *X, const int *incX) nogil
-#ctypedef void (*fast_sentence_ptr) (
-#    const np.uint32_t *word_point, const np.uint8_t *word_code, const int codelen,
-#    REAL_t *syn0, REAL_t *syn1, const int size,
-#    const np.uint32_t word2_index, const REAL_t alpha, REAL_t *work) nogil
 
 ctypedef void (*fast_sentence_ptr) (
     const np.uint32_t *word_point, const np.uint8_t *word_code, int codelens[1000],
@@ -85,7 +83,7 @@ cdef void fast_sentence0(
                 count = count + 1
                 saxpy(&size,&ONEF, &syn0[indexes[m] * size], &ONE, neu1, &ONE)
 
-        if count > 0: #divide or not?
+        if count > 0:
             for c in range(size):
                 neu1[c] = neu1[c] / count
 
@@ -93,6 +91,95 @@ cdef void fast_sentence0(
         for b in range(codelens[i]):
             row2 = word_point[b] * size
             f = <REAL_t>dsdot(&size, neu1, &ONE, &syn1[row2], &ONE) #dsdot
+            #if f <= -MAX_EXP or f >= MAX_EXP:
+            #    continue
+            #f = EXP_TABLE[<int>((f + MAX_EXP) * (EXP_TABLE_SIZE / MAX_EXP / 2))]
+            f = (<REAL_t>1.0)/(<REAL_t>1.0 + <REAL_t>exp(-f))
+            g = (1 - word_code[b] - f) * alpha
+            saxpy(&size, &g, &syn1[row2], &ONE, work, &ONE)
+            saxpy(&size, &g, neu1, &ONE, &syn1[row2], &ONE)
+
+        for m in range(start,end):
+            if m == i or codelens[m] == 0:
+                continue
+            else:
+                saxpy(&size, &ONEF, work, &ONE, &syn0[indexes[m]*size], &ONE)
+
+    for bag_index in range(0, bags_after):
+        start = i + bag_index*words_per_bag + 1
+        end = min(sentence_len, i + (bag_index+1)*words_per_bag + 1)
+
+        memset(neu1, 0, size * cython.sizeof(REAL_t))
+
+        count = 0
+        for m in range(start, end):
+            if m == i or codelens[m] == 0:
+                continue
+            else:
+                count = count + 1
+                saxpy(&size,&ONEF, &syn0[indexes[m] * size], &ONE, neu1, &ONE)
+
+        if count > 0:
+            for c in range(size):
+                neu1[c] = neu1[c] / count
+
+        memset(work, 0, size * cython.sizeof(REAL_t))
+        for b in range(codelens[i]):
+            row2 = word_point[b] * size
+            f = <REAL_t>dsdot(&size, neu1, &ONE, &syn1[row2], &ONE) #dsdot
+            #if f <= -MAX_EXP or f >= MAX_EXP:
+            #    continue
+            #f = EXP_TABLE[<int>((f + MAX_EXP) * (EXP_TABLE_SIZE / MAX_EXP / 2))]
+            f = (<REAL_t>1.0)/(<REAL_t>1.0 + <REAL_t>exp(-f))
+            g = (1 - word_code[b] - f) * alpha
+            saxpy(&size, &g, &syn1[row2], &ONE, work, &ONE)
+            saxpy(&size, &g, neu1, &ONE, &syn1[row2], &ONE)
+
+        for m in range(start,end):
+            if m == i or codelens[m] == 0:
+                continue
+            else:
+                saxpy(&size, &ONEF, work, &ONE, &syn0[indexes[m]*size], &ONE)
+
+
+cdef void fast_sentence1(
+    const np.uint32_t *word_point, const np.uint8_t *word_code, int codelens[1000],
+    REAL_t *neu1,  REAL_t *syn0, REAL_t *syn1, const int size,
+    np.uint32_t indexes[1000], const REAL_t alpha, REAL_t *work, int i, int bags_before, int bags_after, int words_per_bag, int sentence_len) nogil:
+
+    cdef long long a, b
+    cdef long long row2
+    cdef REAL_t f, g
+    cdef int m
+
+    cdef int count
+
+    cdef int bag_index
+    cdef int start
+    cdef int end
+
+    for bag_index in range(-bags_before,0):
+        start = max(0, i + bag_index*words_per_bag)
+        end = i + (bag_index+1)*words_per_bag
+
+        memset(neu1, 0, size * cython.sizeof(REAL_t)) #set work to zero?
+
+        count = 0
+        for m in range(start, end):
+            if m == i or codelens[m] == 0:
+                continue
+            else:
+                count = count + 1
+                saxpy(&size,&ONEF, &syn0[indexes[m] * size], &ONE, neu1, &ONE)
+
+        if count > 0:
+            for c in range(size):
+                neu1[c] = neu1[c] / count
+
+        memset(work, 0, size * cython.sizeof(REAL_t))
+        for b in range(codelens[i]):
+            row2 = word_point[b] * size
+            f = <REAL_t>sdot(&size, neu1, &ONE, &syn1[row2], &ONE) #sdot
             #if f <= -MAX_EXP or f >= MAX_EXP:
             #    continue
             #f = EXP_TABLE[<int>((f + MAX_EXP) * (EXP_TABLE_SIZE / MAX_EXP / 2))]
@@ -121,100 +208,11 @@ cdef void fast_sentence0(
                 count = count + 1
                 saxpy(&size,&ONEF, &syn0[indexes[m] * size], &ONE, neu1, &ONE)
 
-        if count > 0: #divide or not?
+        if count > 0:
             for c in range(size):
                 neu1[c] = neu1[c] / count
 
-        memset(work, 0, size * cython.sizeof(REAL_t)) #set work to zero?
-        for b in range(codelens[i]):
-            row2 = word_point[b] * size
-            f = <REAL_t>dsdot(&size, neu1, &ONE, &syn1[row2], &ONE) #dsdot
-            #if f <= -MAX_EXP or f >= MAX_EXP:
-            #    continue
-            #f = EXP_TABLE[<int>((f + MAX_EXP) * (EXP_TABLE_SIZE / MAX_EXP / 2))]
-            f = (<REAL_t>1.0)/(<REAL_t>1.0 + <REAL_t>exp(-f))
-            g = (1 - word_code[b] - f) * alpha
-            saxpy(&size, &g, &syn1[row2], &ONE, work, &ONE)
-            saxpy(&size, &g, neu1, &ONE, &syn1[row2], &ONE)
-
-        for m in range(start,end):
-            if m == i or codelens[m] == 0:
-                continue
-            else:
-                saxpy(&size, &ONEF, work, &ONE, &syn0[indexes[m]*size], &ONE)
-
-
-cdef void fast_sentence1(
-    #const np.uint32_t *word_point, const np.uint8_t *word_code, const int codelen,
-    const np.uint32_t *word_point, const np.uint8_t *word_code, int codelens[1000],
-    REAL_t *neu1,  REAL_t *syn0, REAL_t *syn1, const int size,
-    #const REAL_t alpha, REAL_t *work, int i, int j, int k) nogil:
-    np.uint32_t indexes[1000], const REAL_t alpha, REAL_t *work, int i, int bags_before, int bags_after, int words_per_bag, int sentence_len) nogil:
-
-    cdef long long a, b
-    cdef long long row2
-    cdef REAL_t f, g
-    cdef int m
-
-    cdef int count = 0
-
-    cdef int bag_index
-    cdef int start
-    cdef int end
-
-    for bag_index in range(-bags_before,0):
-        start = max(0, i + bag_index*words_per_bag)
-        end = i + (bag_index+1)*words_per_bag
-
-        memset(neu1, 0, size * cython.sizeof(REAL_t)) #set work to zero?
-
-        for m in range(start, end):
-            if m == i or codelens[m] == 0:
-                continue
-            else:
-                count = count + 1
-                saxpy(&size,&ONEF, &syn0[indexes[m] * size], &ONE, neu1, &ONE)
-
-        if count > 0: #divide or not?
-            for c in range(size):
-                neu1[c] = neu1[c] / count
-
-        memset(work, 0, size * cython.sizeof(REAL_t)) #set work to zero?
-        for b in range(codelens[i]):
-            row2 = word_point[b] * size
-            f = <REAL_t>sdot(&size, neu1, &ONE, &syn1[row2], &ONE) #sdot
-            #if f <= -MAX_EXP or f >= MAX_EXP:
-            #    continue
-            #f = EXP_TABLE[<int>((f + MAX_EXP) * (EXP_TABLE_SIZE / MAX_EXP / 2))]
-            f = (<REAL_t>1.0)/(<REAL_t>1.0 + <REAL_t>exp(-f))
-            g = (1 - word_code[b] - f) * alpha
-            saxpy(&size, &g, &syn1[row2], &ONE, work, &ONE)
-            saxpy(&size, &g, neu1, &ONE, &syn1[row2], &ONE)
-
-        for m in range(start,end):
-            if m == i or codelens[m] == 0:
-                continue
-            else:
-                saxpy(&size, &ONEF, work, &ONE, &syn0[indexes[m]*size], &ONE)
-
-    for bag_index in range(0, bags_after):
-        start = i + bag_index*words_per_bag + 1
-        end = min(sentence_len, i + (bag_index+1)*words_per_bag + 1)
-
-        memset(neu1, 0, size * cython.sizeof(REAL_t)) #set work to zero?
-
-        for m in range(start, end):
-            if m == i or codelens[m] == 0:
-                continue
-            else:
-                count = count + 1
-                saxpy(&size,&ONEF, &syn0[indexes[m] * size], &ONE, neu1, &ONE)
-
-        if count > 0: #divide or not?
-            for c in range(size):
-                neu1[c] = neu1[c] / count
-
-        memset(work, 0, size * cython.sizeof(REAL_t)) #set work to zero?
+        memset(work, 0, size * cython.sizeof(REAL_t))
         for b in range(codelens[i]):
             row2 = word_point[b] * size
             f = <REAL_t>sdot(&size, neu1, &ONE, &syn1[row2], &ONE) #sdot
@@ -304,6 +302,7 @@ def train_sentence(model, sentence, alpha, _work, _neu1):
     cdef REAL_t _alpha = alpha
     cdef int size = model.layer1_size
     cdef int reduce = model.reduce
+    cdef int direction = model.direction
 
     cdef np.uint32_t *points[MAX_SENTENCE_LEN]
     cdef np.uint8_t *codes[MAX_SENTENCE_LEN]
@@ -345,8 +344,15 @@ def train_sentence(model, sentence, alpha, _work, _neu1):
         for i in range(sentence_len):
             if codelens[i] == 0: #out of vocabulary
                 continue
-            bags_before = min(half_bags - reduced_half_bags[i], (i-1)/words_per_bag + 1)
-            bags_after = min(half_bags - reduced_half_bags[i], (sentence_len-i-2)/words_per_bag + 1)
+
+            if direction <= 0:
+                bags_before = min(half_bags - reduced_half_bags[i], (i-1)/words_per_bag + 1)
+            else:
+                bags_before = 0
+            if direction >= 0:
+                bags_after = min(half_bags - reduced_half_bags[i], (sentence_len-i-2)/words_per_bag + 1)
+            else:
+                bags_after = 0
 
             fast_sentence(points[i], codes[i], codelens, neu1, syn0, syn1, size, indexes, _alpha, work, i, bags_before, bags_after, words_per_bag, sentence_len) #need a way to access stuff                         
 
@@ -387,7 +393,7 @@ def init():
     else:
         # neither => use cython loops, no BLAS
         # actually, the BLAS is so messed up we'll probably have segfaulted above and never even reach here
-        fast_sentence = fast_sentence1 #modified (and false)
+        fast_sentence = fast_sentence1 #modified (and false) The last optimization has not been implemented.
         "print 2"
         return 2
 

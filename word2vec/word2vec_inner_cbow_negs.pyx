@@ -6,6 +6,8 @@
 #
 # Copyright (C) 2013 Radim Rehurek <me@radimrehurek.com>
 # Licensed under the GNU LGPL v2.1 - http://www.gnu.org/licenses/lgpl.html
+#
+# Modified by Sébastien Jean
 
 #Make neu1 replicate the behavior of work
 
@@ -28,10 +30,6 @@ ctypedef void (*saxpy_ptr) (const int *N, const float *alpha, const float *X, co
 ctypedef float (*sdot_ptr) (const int *N, const float *X, const int *incX, const float *Y, const int *incY) nogil
 ctypedef double (*dsdot_ptr) (const int *N, const float *X, const int *incX, const float *Y, const int *incY) nogil
 ctypedef double (*snrm2_ptr) (const int *N, const float *X, const int *incX) nogil
-#ctypedef void (*fast_sentence_ptr) (
-#    const np.uint32_t *word_point, const np.uint8_t *word_code, const int codelen,
-#    REAL_t *syn0, REAL_t *syn1neg, const int size,
-#    const np.uint32_t word2_index, const REAL_t alpha, REAL_t *work) nogil
 
 ctypedef void (*fast_sentence_ptr) (
     const int neg_samples, int codelens[1000], np.uint32_t *table,
@@ -94,8 +92,6 @@ cdef void fast_sentence0(
             target_index = word_index
             label = <REAL_t>1
         else:
-            #with gil:
-            #    random_integer = np.random.randint(table_size - 1)
             random_integer = random_numbers[i*neg_samples + d - 1]
             target_index = table[random_integer]
             if target_index == word_index:
@@ -103,7 +99,7 @@ cdef void fast_sentence0(
             label = <REAL_t>0
 
         row2 = target_index * size
-        f = <REAL_t>sdot(&size, neu1, &ONE, &syn1neg[row2], &ONE)
+        f = <REAL_t>dsdot(&size, neu1, &ONE, &syn1neg[row2], &ONE)
         #if f <= -MAX_EXP or f >= MAX_EXP:
         #    continue
         #f = EXP_TABLE[<int>((f + MAX_EXP) * (EXP_TABLE_SIZE / MAX_EXP / 2))]
@@ -134,7 +130,7 @@ cdef void fast_sentence1(
     cdef np.int32_t target_index
     cdef REAL_t label
     cdef np.int32_t word_index
-    word_index = indexes[i]    
+    word_index = indexes[i]
 
     cdef int count = 0
 
@@ -158,8 +154,6 @@ cdef void fast_sentence1(
             target_index = word_index
             label = <REAL_t>1
         else:
-            #with gil:
-            #    random_integer = np.random.randint(table_size - 1)
             random_integer = random_numbers[i*neg_samples + d - 1]
             target_index = table[random_integer]
             if target_index == word_index:
@@ -167,7 +161,7 @@ cdef void fast_sentence1(
             label = <REAL_t>0
 
         row2 = target_index * size
-        f = <REAL_t>dsdot(&size, neu1, &ONE, &syn1neg[row2], &ONE)
+        f = <REAL_t>sdot(&size, neu1, &ONE, &syn1neg[row2], &ONE)
         #if f <= -MAX_EXP or f >= MAX_EXP:
         #    continue
         #f = EXP_TABLE[<int>((f + MAX_EXP) * (EXP_TABLE_SIZE / MAX_EXP / 2))]
@@ -256,6 +250,7 @@ def train_sentence(model, sentence, alpha, _work, _neu1):
     cdef int table_size = model.table_size
     cdef np.uint32_t *table = <np.uint32_t *>(np.PyArray_DATA(model.table))
     cdef int reduce = model.reduce
+    cdef int direction = model.direction
 
     #cdef np.uint32_t *points[MAX_SENTENCE_LEN]
     #cdef np.uint8_t *codes[MAX_SENTENCE_LEN]
@@ -300,12 +295,23 @@ def train_sentence(model, sentence, alpha, _work, _neu1):
         for i in range(sentence_len):
             if codelens[i] == 0: #out of vocabulary
                 continue
-            j = i - window + reduced_windows[i]
-            if j < 0:
-                j = 0
-            k = i + window + 1 - reduced_windows[i]
-            if k > sentence_len:
-                k = sentence_len
+            if direction < 0:
+                j = i - window + reduced_windows[i]
+                if j < 0:
+                    j = 0
+                k = i
+            elif direction == 0:
+                j = i - window + reduced_windows[i]
+                if j < 0:
+                    j = 0
+                k = i + window + 1 - reduced_windows[i]
+                if k > sentence_len:
+                    k = sentence_len
+            else:
+                j = i+1
+                k = i + window + 1 - reduced_windows[i]
+                if k > sentence_len:
+                    k = sentence_len
 
             fast_sentence(neg_samples, codelens, table, neu1, syn0, syn1neg, size, indexes, _alpha, work, i, j, k, random_numbers) #need a way to access stuff                         
 
@@ -346,7 +352,7 @@ def init():
     else:
         # neither => use cython loops, no BLAS
         # actually, the BLAS is so messed up we'll probably have segfaulted above and never even reach here
-        fast_sentence = fast_sentence1 #modified (and false)
+        fast_sentence = fast_sentence1 #modified (and false) The last optimization has not been implemented.
         "print 2"
         return 2
 

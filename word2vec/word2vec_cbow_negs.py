@@ -3,10 +3,12 @@
 #
 # Copyright (C) 2013 Radim Rehurek <me@radimrehurek.com>
 # Licensed under the GNU LGPL v2.1 - http://www.gnu.org/licenses/lgpl.html
+#
+# Modified by SÉbastien Jean
 
 
 """
-Module for deep learning via *hierarchical softmax skip-gram* from [1]_.
+Module for deep learning via *negative sampling CBOW* from [3]_.
 The training algorithm was originally ported from the C package https://code.google.com/p/word2vec/
 and extended with additional functionality.
 
@@ -45,6 +47,7 @@ and so on.
 
 .. [1] Tomas Mikolov, Kai Chen, Greg Corrado, and Jeffrey Dean. Efficient Estimation of Word Representations in Vector Space. In Proceedings of Workshop at ICLR, 2013.
 .. [2] Optimizing word2vec in gensim, http://radimrehurek.com/2013/09/word2vec-in-python-part-two-optimizing/
+.. [3] Tomas Mikolov, Ilya Sutskever, Kai Chen, Greg Corrado, and Jeffrey Dean. Distributed Representations of Words and Phrases and their Compositionality. Submitted to NIPS 2013.
 """
 
 import logging
@@ -58,7 +61,7 @@ from multiprocessing.pool import ThreadPool
 from Queue import Queue
 
 from numpy import zeros_like, empty, exp, dot, outer, random, dtype, get_include,\
-    float32 as REAL, uint32, seterr, array, uint8, vstack, argsort, fromstring
+    float32 as REAL, uint32, seterr, array, uint8, vstack, argsort, fromstring, inf
 
 from numpy import shape #to delete
 from numpy import zeros
@@ -70,7 +73,6 @@ from gensim import utils, matutils  # utility fnc for pickling, common scipy ope
 
 
 try:
-    #a = 1/0 #This line will be deleted. It introduces a voluntary error for testing.
     # try to compile and use the faster cython version
     import pyximport
     pyximport.install(setup_args={"include_dirs": get_include()})
@@ -81,7 +83,7 @@ except:
 
     def train_sentence(model, sentence, alpha, work=None, neu1=None): #mod
         """
-        Update skip-gram hierarchical softmax model by training on a single sentence.
+        Update CBOW negative sampling model by training on a single sentence.
 
         The sentence is a list of Vocab objects (or None, where the corresponding
         word is not in the vocabulary. Called internally from `Word2Vec.train()`.
@@ -108,7 +110,7 @@ except:
                     l1 = l1 + model.syn0[word2.index]               
                     count += 1
             if count > 0:
-                l1 = l1 / count #divide or not?
+                l1 = l1 / count
             neu1e = matutils.zeros_aligned((model.layer1_size), dtype=REAL)
 
             for d in xrange(model.neg_samples+1):
@@ -160,7 +162,7 @@ class Word2Vec(utils.SaveLoad):
     compatible with the original word2vec implementation via `save_word2vec_format()` and `load_word2vec_format()`.
 
     """
-    def __init__(self, sentences=None, size=100, neg_samples = 5, alpha=0.025, window=5, min_count=5, seed=1, workers=1, min_alpha=0.0001, reduce=1, alpha_decay=1.0):
+    def __init__(self, sentences=None, size=100, neg_samples = 5, alpha=0.025, window=5, min_count=5, max_count=inf, seed=1, workers=1, min_alpha=0.0001, reduce=1, alpha_decay=1.0, direction=0, auto_train=1):
         """
         Initialize the model from an iterable of `sentences`. Each sentence is a
         list of words (utf8 strings) that will be used for training.
@@ -185,15 +187,19 @@ class Word2Vec(utils.SaveLoad):
         self.window = int(window)
         self.seed = seed
         self.min_count = min_count
+        self.max_count = max_count
         self.workers = workers
         self.min_alpha = min_alpha
         self.random_numbers = zeros(1000*self.neg_samples,dtype = uint32)
         self.reduce = int(reduce)
         self.alpha_decay = float(alpha_decay)
+        self.direction = int(direction) # direction is only implemented in Cython, not in the pure python/numpy version
+        self.auto_train = int(auto_train)
         if sentences is not None:
             self.build_vocab(sentences)
             self.build_table()
-            self.train(sentences)
+            if self.auto_train > 0:
+                self.train(sentences)
 
 
     def create_binary_tree(self):
@@ -252,10 +258,16 @@ class Word2Vec(utils.SaveLoad):
         # assign a unique index to each word
         self.vocab, self.index2word = {}, []
         for word, v in vocab.iteritems():
-            if v.count >= self.min_count:
-                v.index = len(self.vocab)
-                self.index2word.append(word)
-                self.vocab[word] = v
+            if v.count >= self.min_count and v.count <= self.max_count:
+                try:
+                    utils.to_utf8(word)
+                    v.index = len(self.vocab)
+                    self.index2word.append(word)
+                    self.vocab[word] = v
+                    self.vocab[word].count_power = pow(v.count, self.c_power)
+                    self.vocab[word].count_power_2 = pow(v.count, 2*self.c_power)
+                except:
+                    pass
         logger.info("total %i word types after removing those with count<%s" % (len(self.vocab), self.min_count))
 
         # add info about each word's Huffman encoding
@@ -316,8 +328,7 @@ class Word2Vec(utils.SaveLoad):
                 # update the learning rate before every job
                 alpha = max(self.min_alpha, self.alpha * (1 - 1.0 * self.alpha_decay * word_count[0] / total_words))
                 # how many words did we train on? out-of-vocabulary (unknown) words do not count
-                #job_words = sum(train_sentence(self, sentence, alpha, work, self.algorithm) for sentence in job) #numpy
-                job_words = sum(train_sentence(self, sentence, alpha, work, neu1) for sentence in job) #cython
+                job_words = sum(train_sentence(self, sentence, alpha, work, neu1) for sentence in job)
                 with lock:
                     word_count[0] += job_words
                     elapsed = time.time() - start
@@ -354,7 +365,6 @@ class Word2Vec(utils.SaveLoad):
         """Reset all projection weights to an initial (untrained) state, but keep the existing vocabulary."""
         random.seed(self.seed)
         self.syn0 = matutils.zeros_aligned((len(self.vocab), self.layer1_size), dtype=REAL)
-        #self.syn1 = matutils.zeros_aligned((len(self.vocab), self.layer1_size), dtype=REAL)
         self.syn1neg = matutils.zeros_aligned((len(self.vocab), self.layer1_size), dtype=REAL)
         self.syn0 += (random.rand(len(self.vocab), self.layer1_size) - 0.5) / self.layer1_size
         self.syn0norm = None
@@ -645,6 +655,28 @@ class Text8Corpus(object):
                     yield sentence[:max_sentence_length]
                     sentence = sentence[max_sentence_length:]
 
+class Holmes(object):
+    """Iterate over sentences from the Holmes training dataset ."""
+    def __init__(self, dir):
+        self.dir = dir
+
+    def __iter__(self):
+        sentence, rest, max_sentence_length = [], '', 1000
+        for i in sorted(os.listdir(self.dir)):        
+            with open(os.path.join(self.dir,i)) as fin:
+                while True:
+                    text = rest + fin.read(8192)  # avoid loading the entire file (=1 line) into RAM
+                    if text == rest:  # EOF
+                        sentence.extend(rest.split()) # return the last chunk of words, too (may be shorter/longer)
+                        if sentence:
+                            yield sentence
+                        break
+                    last_token = text.rfind(' ')  # the last token may have been split in two... keep it for the next iteration
+                    words, rest = (text[:last_token].split(), text[last_token:].strip()) if last_token >= 0 else ([], text)
+                    sentence.extend(words)
+                    while len(sentence) >= max_sentence_length:
+                        yield sentence[:max_sentence_length]
+                        sentence = sentence[max_sentence_length:]
 
 class LineSentence(object):
     def __init__(self, fname):

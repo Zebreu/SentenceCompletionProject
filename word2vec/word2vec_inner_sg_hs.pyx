@@ -6,6 +6,8 @@
 #
 # Copyright (C) 2013 Radim Rehurek <me@radimrehurek.com>
 # Licensed under the GNU LGPL v2.1 - http://www.gnu.org/licenses/lgpl.html
+#
+# Modified by Sébastien Jean
 
 import cython
 import numpy as np
@@ -61,9 +63,10 @@ cdef void fast_sentence0(
     for b in range(codelen):
         row2 = word_point[b] * size
         f = <REAL_t>dsdot(&size, &syn0[row1], &ONE, &syn1[row2], &ONE)
-        if f <= -MAX_EXP or f >= MAX_EXP:
-            continue
-        f = EXP_TABLE[<int>((f + MAX_EXP) * (EXP_TABLE_SIZE / MAX_EXP / 2))]
+        #if f <= -MAX_EXP or f >= MAX_EXP:
+        #    continue
+        #f = EXP_TABLE[<int>((f + MAX_EXP) * (EXP_TABLE_SIZE / MAX_EXP / 2))]
+        f = (<REAL_t>1.0)/(<REAL_t>1.0 + <REAL_t>exp(-f))
         g = (1 - word_code[b] - f) * alpha
         saxpy(&size, &g, &syn1[row2], &ONE, work, &ONE)
         saxpy(&size, &g, &syn0[row1], &ONE, &syn1[row2], &ONE)
@@ -83,9 +86,10 @@ cdef void fast_sentence1(
     for b in range(codelen):
         row2 = word_point[b] * size
         f = <REAL_t>sdot(&size, &syn0[row1], &ONE, &syn1[row2], &ONE)
-        if f <= -MAX_EXP or f >= MAX_EXP:
-            continue
-        f = EXP_TABLE[<int>((f + MAX_EXP) * (EXP_TABLE_SIZE / MAX_EXP / 2))]
+        #if f <= -MAX_EXP or f >= MAX_EXP:
+        #    continue
+        #f = EXP_TABLE[<int>((f + MAX_EXP) * (EXP_TABLE_SIZE / MAX_EXP / 2))]
+        f = (<REAL_t>1.0)/(<REAL_t>1.0 + <REAL_t>exp(-f))
         g = (1 - word_code[b] - f) * alpha
         saxpy(&size, &g, &syn1[row2], &ONE, work, &ONE)
         saxpy(&size, &g, &syn0[row1], &ONE, &syn1[row2], &ONE)
@@ -130,6 +134,7 @@ def train_sentence(model, sentence, alpha, _work):
     cdef REAL_t _alpha = alpha
     cdef int size = model.layer1_size
     cdef int reduce = model.reduce
+    cdef int direction = model.direction
 
     cdef np.uint32_t *points[MAX_SENTENCE_LEN]
     cdef np.uint8_t *codes[MAX_SENTENCE_LEN]
@@ -157,7 +162,7 @@ def train_sentence(model, sentence, alpha, _work):
             if reduce > 0:
                 reduced_windows[i] = np.random.randint(window)
             else:
-                reduces_windows[i] = 0
+                reduced_windows[i] = 0
             result += 1
 
     # release GIL & train on the sentence
@@ -165,12 +170,23 @@ def train_sentence(model, sentence, alpha, _work):
         for i in range(sentence_len):
             if codelens[i] == 0:
                 continue
-            j = i - window + reduced_windows[i]
-            if j < 0:
-                j = 0
-            k = i + window + 1 - reduced_windows[i]
-            if k > sentence_len:
-                k = sentence_len
+            if direction < 0:
+                j = i - window + reduced_windows[i]
+                if j < 0:
+                    j = 0
+                k = i
+            elif direction == 0:
+                j = i - window + reduced_windows[i]
+                if j < 0:
+                    j = 0
+                k = i + window + 1 - reduced_windows[i]
+                if k > sentence_len:
+                    k = sentence_len
+            else:
+                j = i+1
+                k = i + window + 1 - reduced_windows[i]
+                if k > sentence_len:
+                    k = sentence_len
             for j in range(j, k):
                 if j == i or codelens[j] == 0:
                     continue

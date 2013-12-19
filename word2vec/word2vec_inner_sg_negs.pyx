@@ -6,6 +6,8 @@
 #
 # Copyright (C) 2013 Radim Rehurek <me@radimrehurek.com>
 # Licensed under the GNU LGPL v2.1 - http://www.gnu.org/licenses/lgpl.html
+#
+# Modified by Sébastien Jean
 
 import cython
 import numpy as np
@@ -70,8 +72,6 @@ cdef void fast_sentence0(
             target_index = word_index
             label = <REAL_t>1
         else:
-            #with gil:
-            #    random_integer = np.random.randint(table_size - 1)
             random_integer = random_numbers[i*2*window*neg_samples + neg_samples * m + d - 1]
             target_index = table[random_integer]
             if target_index == word_index:
@@ -113,8 +113,6 @@ cdef void fast_sentence1(
             target_index = word_index
             label = <REAL_t>1
         else:
-            #with gil:
-            #    random_integer = np.random.randint(table_size - 1)
             random_integer = random_numbers[i*2*window*neg_samples + neg_samples * m + d - 1]
             target_index = table[random_integer]
             if target_index == word_index:
@@ -157,6 +155,7 @@ def train_sentence(model, sentence, alpha, _work):
     cdef int table_size = model.table_size
     cdef np.uint32_t *table = <np.uint32_t *>(np.PyArray_DATA(model.table))
     cdef int reduce = model.reduce
+    cdef int direction = model.direction
 
     #cdef np.uint32_t *points[MAX_SENTENCE_LEN]
     #cdef np.uint8_t *codes[MAX_SENTENCE_LEN]
@@ -197,12 +196,23 @@ def train_sentence(model, sentence, alpha, _work):
         for i in range(sentence_len):
             if codelens[i] == 0:
                 continue
-            j = i - window + reduced_windows[i]
-            if j < 0:
-                j = 0
-            k = i + window + 1 - reduced_windows[i]
-            if k > sentence_len:
-                k = sentence_len
+            if direction < 0:
+                j = i - window + reduced_windows[i]
+                if j < 0:
+                    j = 0
+                k = i
+            elif direction == 0:
+                j = i - window + reduced_windows[i]
+                if j < 0:
+                    j = 0
+                k = i + window + 1 - reduced_windows[i]
+                if k > sentence_len:
+                    k = sentence_len
+            else:
+                j = i+1
+                k = i + window + 1 - reduced_windows[i]
+                if k > sentence_len:
+                    k = sentence_len
             m = 0
             for j in range(j, k):
                 if j == i or codelens[j] == 0:
