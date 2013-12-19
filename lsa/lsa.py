@@ -14,24 +14,38 @@ import os
 import sys
 import itertools
 import datetime
+from sklearn import preprocessing
 
 
 class Lsa:
     def __init__(self):
         self.dictionary = {}
         
-    def parse_documents(self, documents):
+    def parse_documents(self, documents, count=False):
         """ Builds a dictionary of words encountered and in which sentences they are found """
         documents = [document.split(" ") for document in documents if len(document.split(" ")) > 1] # Minimum length of sentence
         self.number_documents = len(documents)
+        self.total_words = 0
         for index,document in enumerate(documents):
             words = document
             for word in words:
-                if word in self.dictionary:
-                    self.dictionary[word].append(index)
+                self.total_words += 1
+                if count:
+                    if word in self.dictionary:
+                        self.dictionary[word] += 1
+                    else:
+                        self.dictionary[word] = 1
                 else:
-                    self.dictionary[word] = [index]
-                    
+                    if word in self.dictionary:
+                        self.dictionary[word].append(index)
+                    else:
+                        self.dictionary[word] = [index]
+        if count:
+            print self.total_words, "total words"
+            self.total_words = float(self.total_words)
+            print "Normalization"
+            for word in self.dictionary.keys():
+                self.dictionary[word] = self.dictionary[word]/self.total_words
         
     
     def build_count_matrix(self, common_threshold = 100): # common_threshold argument is useless for now
@@ -123,6 +137,31 @@ def average_score(sentence, position,lsa, sigma):
     score = score/(len(words)+1)
     return score
 
+def unigram_weighting(lsa, words):
+    unigrams = preprocessing.scale(numpy.array([lsa.dictionary[word] for word in words]))
+    denominator = numpy.exp(unigrams).sum()
+    unigrams = [numpy.e**unigram/denominator for unigram in unigrams]
+    weights = [1.0/unigram for unigram in unigrams]
+    return weights
+
+def not_gaussian_score(sentence, position, lsa, sigma):
+    """ Scores a sentence with weighted similarities, a wide gaussian centered on the target word """
+    score = 0
+    sentence = sentence.replace("\n","")
+    words = sentence.split(" ")
+    del words[0] # ID of the sentence
+    target = lsa.repeated_words.index(words[position])
+    target = lsa.word_vectors[target]
+    #print words[position]
+    del(words[position])
+    gaussian = scipy.stats.norm(position,sigma) # Standard deviation could change, (len(words)) dependent #(250<300, 5)
+    unigram_weights = unigram_weighting(lsa, words)
+    for i,word in enumerate(words):
+        weight = gaussian.pdf(i-position)
+        score += unigram_weights[i]*weight*(cosine_similarity(target, lsa.word_vectors[lsa.repeated_words.index(word)]))
+    score = score/(len(words)+1)
+    return score     
+
 def gaussian_score(sentence, position, lsa, sigma):
 	""" Scores a sentence with weighted similarities, a wide gaussian centered on the target word """
 	score = 0
@@ -185,6 +224,7 @@ def test_whole(lsa, data = None, sigma = 4.5):
         answer = numpy.argmax(prediction)
         if answer == answers[i]:
             performance += 1
+    #numpy.savetxt("LSApredictions",predictions)
     print
     print float(performance)/i
     return float(performance)/i
