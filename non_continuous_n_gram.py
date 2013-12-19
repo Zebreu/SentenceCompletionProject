@@ -1,4 +1,5 @@
 from __future__ import division
+from lib.stemming.porter2 import stem
 from optparse import OptionParser
 import os
 import pickle
@@ -9,6 +10,7 @@ import numpy
 
 OPTIONS_PER_SENTENCE = 5
 DATABASE = {}
+STEMMING = False
 
 
 def generate_combinations(l):
@@ -115,9 +117,21 @@ def get_predictions(test_data):
                 line = line.replace("[%s]" % option, "")  # remove fill word from sentence
                 words_in_sentence = line.split()[1:]  # start from index 1 since 1st cell contains the question number
             elif i % OPTIONS_PER_SENTENCE == 4:
-                options.append(option)
-                best_option_1, best_option_2 = get_best_option(options, words_in_sentence)
-                predictions.append((best_option_1, best_option_2))
+                if not STEMMING:
+                    options.append(option)
+                    best_option_1, best_option_2 = get_best_option(options, words_in_sentence)
+                    predictions.append((best_option_1, best_option_2))
+                else:
+                    options.append(option)
+                    stemmed_options = [stem(option) for option in options]
+                    stemmed_words_in_sentence = [stem(word) for word in words_in_sentence]
+                    best_option_1, best_option_2 = get_best_option(stemmed_options, stemmed_words_in_sentence)
+                    if best_option_1 and best_option_2:
+                        best_option_index_1 = stemmed_options.index(best_option_1)
+                        best_option_index_2 = stemmed_options.index(best_option_2)
+                        predictions.append((options[best_option_index_1], options[best_option_index_2]))
+                    else:
+                        predictions.append((None, None))
             else:
                 options.append(option)
             i += 1
