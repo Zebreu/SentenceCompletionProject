@@ -6,11 +6,11 @@ class ngram:
 		self.n = n
 
 	def countOccurences(self, n, text, grams):
-		if n == 0:
+		if n == 1:
 			self.ngrams = grams
 		else:
 			occurences = grams
-			for i in range(len(text)-n+1):
+			for i in range(len(text)):
 				g = ' '.join(text[i:i+n])
 				occurences.setdefault(g, 0)
 				occurences[g] += 1
@@ -18,7 +18,33 @@ class ngram:
 
 	def train(self, text):
 		self.countOccurences(self.n, text.split(' '), {})
-		self.V = len(dict((k, v) for k, v in self.ngrams.iteritems() if len(k) == 1))
+		# self.V = len(dict((k, v) for k, v in self.ngrams.iteritems() if len(k) == 1))
+		# self.ngrams = {k: v for k, v in self.ngrams.iteritems() if not (len(k.split(' ')) == 4 and v == 1)}
+		# self.frequencies = {}
+		# self.frequenciesPlusOne = {}
+		# self.n_fourgrams = 0
+		# self.n_trigrams = 0
+		# self.n_bigrams = 0
+		# for (k, v) in self.ngrams.iteritems():
+		# 	if len(k.split(' ')) == 4:
+		# 		self.n_fourgrams += 1
+		# 		# self.n_fourgrams += v
+		# 	elif len(k.split(' ')) == 3:
+		# 		self.n_trigrams += 1
+		# 		# self.n_trigrams += v
+		# 	elif len(k.split(' ')) == 2:
+		# 		self.n_bigrams += 1
+		# 		# self.n_bigrams += v
+		# 	self.frequencies.setdefault(v, 0)
+		# 	self.frequencies[v] += 1
+		# 	self.frequenciesPlusOne.setdefault(v + 1, 0)
+		# 	self.frequenciesPlusOne[v + 1] += 1
+
+		# self.N = 0
+		# for (k, v) in self.ngrams.iteritems():
+		# 	self.N += v * self.frequencies[v]
+
+
 
 	def compute_prediction(self, sentences, ngramType=1):
 		probs = []
@@ -38,9 +64,9 @@ class ngram:
 				fourgram = 0
 
 			if sMinusOne in self.ngrams:
-				threegram = self.ngrams[sMinusOne]
+				trigram = self.ngrams[sMinusOne]
 			else: 
-				threegram = 0
+				trigram = 0
 
 			# Types:
 			# - 1: classic n-grams
@@ -59,24 +85,32 @@ class ngram:
 				else: 
 					bigram = 0
 
-				probs.append(bigram + 2.0 * threegram + 3.0 * fourgram)
+				probs.append(bigram + 2.0 * trigram + 3.0 * fourgram)
 			elif ngramType == 3:
 				if previousWords in self.ngrams:
 					histgram = self.ngrams[previousWords]
 				else:
 					histgram = 0					
-				probs.append((float(fourgram) + 1)/(float(histgram) + self.V))
+				probs.append(float(fourgram + 1)/float(histgram + self.V))
 			elif ngramType == 4:
 				if s in self.ngrams:
 					c = self.ngrams[s]
-					n_cplus1 = len([k for (k, v) in self.ngrams.iteritems() if v == (c + 1)])
-					n_c = len([k for (k, v) in self.ngrams.iteritems() if v == c])
+					# n_cplus1 = len([k for (k, v) in self.ngrams.iteritems() if v == (c + 1)])
+					# n_c = len([k for (k, v) in self.ngrams.iteritems() if v == c])
+					n_cplus1 = self.frequenciesPlusOne[c + 1]
+					n_c = self.frequencies[c]
 					occurs_once = (c + 1) *  n_cplus1 / n_c
 				else:
-					occurs_once = len([k for (k, v) in self.ngrams.iteritems() if v == 1])
+					occurs_once = self.frequencies[1]
 
-				probs.append(occurs_once / len([k for (k, v) in self.ngrams.iteritems() if len(k.split(' ')) == len(s.split(' '))])) 
+				# if len(s.split(' ')) == 4:
+				# 	probs.append(float(occurs_once) / float(self.n_fourgrams))
+				# elif len(s.split(' ')) == 3:
+				# 	probs.append(float(occurs_once) / float(self.n_trigrams))
+				# else:
+				# 	probs.append(float(occurs_once) / float(self.n_bigrams))
+				probs.append(float(occurs_once) / float(self.N))
 			else:
 				print "Wrong type"
-			
+					
 		return probs

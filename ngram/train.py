@@ -7,7 +7,7 @@ import nltk
 import numpy as np
 
 if __name__ == "__main__":
-    model = ngram.ngram(4)
+    model = ngram.ngram(3)
     # Train the model on text file preprocessed
     with open("preprocessed/train_set.txt", 'r') as train_set:
         model.train(train_set.read())
@@ -56,7 +56,8 @@ if __name__ == "__main__":
                         ans_word = ""
 
                     # Check success
-                    result = sentences[np.argmax(model.compute_prediction(sentences, 4))]
+                    print "Compute prediction for question", i/5
+                    result = sentences[np.argmax(model.compute_prediction(sentences, 2))]
 
                     if result.split(' ')[-1] == ans_word:
                         rights += 1
