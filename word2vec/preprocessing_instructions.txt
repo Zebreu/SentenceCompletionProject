@@ -1,0 +1,56 @@
+#sentence_per_line("C:\\Users\\Sebastien\\Projet\\Holmes_Training_Data\\HRLND10.txt","C:\\Users\\Sebastien\\Projet\\HRLND10_processed.txt")
+
+#one_line("C:\\Users\\Sebastien\\Projet\\Holmes_Training_Data\\1ADAM10.txt","C:\\Users\\Sebastien\\Projet\\temp\\1ADAM10_processed.txt")
+
+#remove_punctuation("C:\\Users\\Sebastien\\Projet\\temp\\1ADAM10_processed.txt","C:\\Users\\Sebastien\\Projet\\temp\\1ADAM10_processed2.txt")
+
+#remove_uppercase("C:\\Users\\Sebastien\\Projet\\temp\\1ADAM10_processed2.txt","C:\\Users\\Sebastien\\Projet\\1ADAM10_processed.txt")
+
+import os
+
+input_dir = "C:\\Users\\Sebastien\\Projet\\Holmes_Training_Data"
+temp_dir = "C:\\Users\\Sebastien\\Projet\\temp"
+output_dir = "C:\\Users\\Sebastien\\Projet\\Holmes_Training_Data_Preprocessed"
+#file_all = "C:\\Users\\Sebastien\\Projet\\Holmes_Training_Data_Preprocessed_All.txt"
+
+for i in sorted(os.listdir(input_dir)):
+    one_line(os.path.join(input_dir,i),os.path.join(temp_dir,"1.txt"))
+    remove_punctuation(os.path.join(temp_dir,"1.txt"),os.path.join(temp_dir,"2.txt"))
+    remove_uppercase(os.path.join(temp_dir,"2.txt"), os.path.join(temp_dir,"3.txt"))
+    remove_nextline(os.path.join(temp_dir,"3.txt"),os.path.join(output_dir,i))
+
+#for i in sorted(os.listdir(output_dir)):
+#    add_to_all(os.path.join(output_dir,i), file_all)
+
+############ Test questions
+
+input_dir = "C:\\Users\\Sebastien\\Projet\\MSR_Sentence_Completion_Challenge_V1\\Data"
+temp_dir = "C:\\Users\\Sebastien\\Projet\\temp"
+output_dir = "C:\\Users\\Sebastien\\Projet\\MSR_Sentence_Completion_Challenge_V1\\Data"
+
+remove_punctuation(os.path.join(input_dir,"Holmes.lm_format.questions.txt"),os.path.join(temp_dir,"1.txt"))
+remove_uppercase(os.path.join(temp_dir,"1.txt"), os.path.join(output_dir,"Holmes.lm_format.questions.preprocessed.txt"))
+
+########### Test answers
+
+input_dir = "C:\\Users\\Sebastien\\Projet\\MSR_Sentence_Completion_Challenge_V1\\Data"
+temp_dir = "C:\\Users\\Sebastien\\Projet\\temp"
+output_dir = "C:\\Users\\Sebastien\\Projet\\MSR_Sentence_Completion_Challenge_V1\\Data"
+
+remove_punctuation(os.path.join(input_dir,"Holmes.lm_format.answers.txt"),os.path.join(temp_dir,"1.txt"))
+remove_uppercase(os.path.join(temp_dir,"1.txt"), os.path.join(output_dir,"Holmes.lm_format.answers.preprocessed.txt"))
+
+##########
+import os
+
+input_dir = "C:\\Users\\Sebastien\\Projet\\Holmes_Training_Data"
+temp_dir = "C:\\Users\\Sebastien\\Projet\\temp"
+output_dir = "C:\\Users\\Sebastien\\Projet\\Holmes_Training_Data_Preprocessed_NoDet"
+#file_all = "C:\\Users\\Sebastien\\Projet\\Holmes_Training_Data_Preprocessed_All.txt"
+
+for i in sorted(os.listdir(input_dir)):
+    one_line(os.path.join(input_dir,i),os.path.join(temp_dir,"1.txt"))
+    remove_punctuation(os.path.join(temp_dir,"1.txt"),os.path.join(temp_dir,"2.txt"))
+    remove_uppercase(os.path.join(temp_dir,"2.txt"), os.path.join(temp_dir,"3.txt"))
+    remove_determiner(os.path.join(temp_dir,"3.txt"),os.path.join(temp_dir,"4.txt"))
+    remove_nextline(os.path.join(temp_dir,"4.txt"),os.path.join(output_dir,i))

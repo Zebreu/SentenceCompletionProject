@@ -1,0 +1,475 @@
+import os
+
+output_dir = "C:\\Holmes_Training_Data_Preprocessed"
+
+from word2vec_cbow_hs import *
+
+logging.basicConfig(format='%(asctime)s : %(threadName)s : %(levelname)s : %(message)s', level=logging.INFO)
+logging.info("running %s" % " ".join(sys.argv))
+logging.info("using optimization %s" % FAST_VERSION)
+
+seterr(all='raise')  # don't ignore numpy errors
+
+model = Word2Vec(Holmes(output_dir), size=640, window=5, min_count=5, workers=2, alpha_decay = 0.2)
+
+model.alpha = 0.02
+model.alpha_decay = 1/4.
+model.train(Holmes(output_dir))
+
+model.alpha = 0.015
+model.alpha_decay = 1/3.
+model.train(Holmes(output_dir))
+
+model.alpha = 0.01
+model.alpha_decay = 1/2.
+model.train(Holmes(output_dir))
+
+model.alpha = 0.005
+model.alpha_decay = 1.
+model.train(Holmes(output_dir))
+
+#####
+
+import os
+
+output_dir = "C:\\Holmes_Training_Data_Preprocessed"
+
+from word2vec_cbow_hs import *
+
+logging.basicConfig(format='%(asctime)s : %(threadName)s : %(levelname)s : %(message)s', level=logging.INFO)
+logging.info("running %s" % " ".join(sys.argv))
+logging.info("using optimization %s" % FAST_VERSION)
+
+seterr(all='raise')  # don't ignore numpy errors
+
+model = Word2Vec(Holmes(output_dir), size=640, window=5, min_count=5, workers=2)
+
+#####
+
+import os
+
+output_dir = "C:\\Holmes_Training_Data_Preprocessed"
+
+from word2vec_cbow_negs import *
+
+logging.basicConfig(format='%(asctime)s : %(threadName)s : %(levelname)s : %(message)s', level=logging.INFO)
+logging.info("running %s" % " ".join(sys.argv))
+logging.info("using optimization %s" % FAST_VERSION)
+
+seterr(all='raise')  # don't ignore numpy errors
+
+model = Word2Vec(Holmes(output_dir), size=640, neg_samples=15, window=5, min_count=5, workers=2, alpha_decay = 0.2)
+
+model.alpha = 0.02
+model.alpha_decay = 1/4.
+model.train(Holmes(output_dir))
+
+model.alpha = 0.015
+model.alpha_decay = 1/3.
+model.train(Holmes(output_dir))
+
+model.alpha = 0.01
+model.alpha_decay = 1/2.
+model.train(Holmes(output_dir))
+
+model.alpha = 0.005
+model.alpha_decay = 1.
+model.train(Holmes(output_dir))
+
+#####
+
+#####
+
+import os
+
+output_dir = "C:\\Holmes_Training_Data_Preprocessed"
+
+from word2vec_cbow_negs import *
+
+logging.basicConfig(format='%(asctime)s : %(threadName)s : %(levelname)s : %(message)s', level=logging.INFO)
+logging.info("running %s" % " ".join(sys.argv))
+logging.info("using optimization %s" % FAST_VERSION)
+
+seterr(all='raise')  # don't ignore numpy errors
+
+model = Word2Vec(Holmes(output_dir), size=640, neg_samples=15, window=5, min_count=5, workers=2)
+
+#####
+
+import os
+
+output_dir = "C:\\Holmes_Training_Data_Preprocessed"
+
+from word2vec_hybrid_hs import *
+
+logging.basicConfig(format='%(asctime)s : %(threadName)s : %(levelname)s : %(message)s', level=logging.INFO)
+logging.info("running %s" % " ".join(sys.argv))
+logging.info("using optimization %s" % FAST_VERSION)
+
+seterr(all='raise')  # don't ignore numpy errors
+
+model = Word2Vec(Holmes(output_dir), size=640, half_bags=3, words_per_bag=4, min_count=5, workers=2, alpha_decay = 0.2)
+
+model.alpha = 0.02
+model.alpha_decay = 1/4.
+model.train(Holmes(output_dir))
+
+model.alpha = 0.015
+model.alpha_decay = 1/3.
+model.train(Holmes(output_dir))
+
+model.alpha = 0.01
+model.alpha_decay = 1/2.
+model.train(Holmes(output_dir))
+
+model.alpha = 0.005
+model.alpha_decay = 1.
+model.train(Holmes(output_dir))
+
+#####
+
+import os
+
+output_dir = "C:\\Holmes_Training_Data_Preprocessed"
+
+from word2vec_hybrid_hs import *
+
+logging.basicConfig(format='%(asctime)s : %(threadName)s : %(levelname)s : %(message)s', level=logging.INFO)
+logging.info("running %s" % " ".join(sys.argv))
+logging.info("using optimization %s" % FAST_VERSION)
+
+seterr(all='raise')  # don't ignore numpy errors
+
+model = Word2Vec(Holmes(output_dir), size=640, half_bags=3, words_per_bag=4, min_count=5, workers=2)
+
+#####
+
+import os
+
+output_dir = "C:\\Holmes_Training_Data_Preprocessed"
+
+from word2vec_sg_hs import *
+
+logging.basicConfig(format='%(asctime)s : %(threadName)s : %(levelname)s : %(message)s', level=logging.INFO)
+logging.info("running %s" % " ".join(sys.argv))
+logging.info("using optimization %s" % FAST_VERSION)
+
+seterr(all='raise')  # don't ignore numpy errors
+
+model = Word2Vec(Holmes(output_dir), size=640, window=10, min_count=1, workers=2, alpha_decay = 0.2)
+
+model.alpha = 0.02
+model.alpha_decay = 1/4.
+model.train(Holmes(output_dir))
+
+model.alpha = 0.015
+model.alpha_decay = 1/3.
+model.train(Holmes(output_dir))
+
+model.alpha = 0.01
+model.alpha_decay = 1/2.
+model.train(Holmes(output_dir))
+
+model.alpha = 0.005
+model.alpha_decay = 1.
+model.train(Holmes(output_dir))
+#####
+
+import os
+
+output_dir = "C:\\Holmes_Training_Data_Preprocessed"
+
+from word2vec_sg_hs import *
+
+logging.basicConfig(format='%(asctime)s : %(threadName)s : %(levelname)s : %(message)s', level=logging.INFO)
+logging.info("running %s" % " ".join(sys.argv))
+logging.info("using optimization %s" % FAST_VERSION)
+
+seterr(all='raise')  # don't ignore numpy errors
+
+model = Word2Vec(Holmes(output_dir), size=640, window=10, min_count=1, workers=2)
+
+#####
+
+import os
+
+output_dir = "C:\\Holmes_Training_Data_Preprocessed"
+
+from word2vec_sg_hs import *
+
+logging.basicConfig(format='%(asctime)s : %(threadName)s : %(levelname)s : %(message)s', level=logging.INFO)
+logging.info("running %s" % " ".join(sys.argv))
+logging.info("using optimization %s" % FAST_VERSION)
+
+seterr(all='raise')  # don't ignore numpy errors
+
+model = Word2Vec(Holmes(output_dir), size=640, window=15, min_count=5, workers=2, alpha_decay = 0.2)
+
+model.alpha = 0.02
+model.alpha_decay = 1/4.
+model.train(Holmes(output_dir))
+
+model.alpha = 0.015
+model.alpha_decay = 1/3.
+model.train(Holmes(output_dir))
+
+model.alpha = 0.01
+model.alpha_decay = 1/2.
+model.train(Holmes(output_dir))
+
+model.alpha = 0.005
+model.alpha_decay = 1.
+model.train(Holmes(output_dir))
+
+#####
+import os
+
+output_dir = "C:\\Holmes_Training_Data_Preprocessed"
+
+from word2vec_sg_hs import *
+
+logging.basicConfig(format='%(asctime)s : %(threadName)s : %(levelname)s : %(message)s', level=logging.INFO)
+logging.info("running %s" % " ".join(sys.argv))
+logging.info("using optimization %s" % FAST_VERSION)
+
+seterr(all='raise')  # don't ignore numpy errors
+
+model = Word2Vec(Holmes(output_dir), size=640, window=15, min_count=5, workers=2)
+
+#####
+
+import os
+
+output_dir = "C:\\Holmes_Training_Data_Preprocessed"
+
+from word2vec_sg_hs import *
+
+logging.basicConfig(format='%(asctime)s : %(threadName)s : %(levelname)s : %(message)s', level=logging.INFO)
+logging.info("running %s" % " ".join(sys.argv))
+logging.info("using optimization %s" % FAST_VERSION)
+
+seterr(all='raise')  # don't ignore numpy errors
+
+model = Word2Vec(Holmes(output_dir), size=640, window=15, min_count=5, workers=2, auto_train=0)
+
+#####
+#####
+class Holmes(object):
+    """Iterate over sentences from the Holmes training dataset ."""
+    def __init__(self, dir):
+        self.dir = dir
+
+    def __iter__(self):
+        sentence, rest, max_sentence_length = [], '', 1000
+        for i in sorted(os.listdir(self.dir)):        
+            with open(os.path.join(self.dir,i)) as fin:
+                while True:
+                    text = rest + fin.read(8192)  # avoid loading the entire file (=1 line) into RAM
+                    if text == rest:  # EOF
+                        sentence.extend(rest.split()) # return the last chunk of words, too (may be shorter/longer)
+                        if sentence:
+                            yield sentence
+                        break
+                    last_token = text.rfind(' ')  # the last token may have been split in two... keep it for the next iteration
+                    words, rest = (text[:last_token].split(), text[last_token:].strip()) if last_token >= 0 else ([], text)
+                    sentence.extend(words)
+                    while len(sentence) >= max_sentence_length:
+                        yield sentence[:max_sentence_length]
+                        sentence = sentence[max_sentence_length:]
+
+import os
+
+output_dir = "C:\\Holmes_Training_Data_Preprocessed"
+
+from word2vec import * #gensim original
+
+logging.basicConfig(format='%(asctime)s : %(threadName)s : %(levelname)s : %(message)s', level=logging.INFO)
+logging.info("running %s" % " ".join(sys.argv))
+logging.info("using optimization %s" % FAST_VERSION)
+
+seterr(all='raise')  # don't ignore numpy errors
+
+model = Word2Vec(Holmes(output_dir), size=1000, window=10, min_count=5, workers=2)
+#####
+#####
+
+import os
+
+output_dir = "C:\\Holmes_Training_Data_Preprocessed"
+
+from word2vec_cbow_hs import *
+
+logging.basicConfig(format='%(asctime)s : %(threadName)s : %(levelname)s : %(message)s', level=logging.INFO)
+logging.info("running %s" % " ".join(sys.argv))
+logging.info("using optimization %s" % FAST_VERSION)
+
+seterr(all='raise')  # don't ignore numpy errors
+
+model = Word2Vec(Holmes(output_dir), size=640, window=10, min_count=5, workers=2, alpha_decay = 0.2)
+
+model.alpha = 0.02
+model.alpha_decay = 1/4.
+model.train(Holmes(output_dir))
+
+model.alpha = 0.015
+model.alpha_decay = 1/3.
+model.train(Holmes(output_dir))
+
+model.alpha = 0.01
+model.alpha_decay = 1/2.
+model.train(Holmes(output_dir))
+
+model.alpha = 0.005
+model.alpha_decay = 1.
+model.train(Holmes(output_dir))
+
+#####
+
+import os
+
+output_dir = "C:\\Holmes_Training_Data_Preprocessed"
+
+from word2vec_cbow_hs import *
+
+logging.basicConfig(format='%(asctime)s : %(threadName)s : %(levelname)s : %(message)s', level=logging.INFO)
+logging.info("running %s" % " ".join(sys.argv))
+logging.info("using optimization %s" % FAST_VERSION)
+
+seterr(all='raise')  # don't ignore numpy errors
+
+model = Word2Vec(Holmes(output_dir), size=640, window=20, min_count=5, workers=2, alpha_decay = 0.2)
+
+model.alpha = 0.02
+model.alpha_decay = 1/4.
+model.train(Holmes(output_dir))
+
+model.alpha = 0.015
+model.alpha_decay = 1/3.
+model.train(Holmes(output_dir))
+
+model.alpha = 0.01
+model.alpha_decay = 1/2.
+model.train(Holmes(output_dir))
+
+model.alpha = 0.005
+model.alpha_decay = 1.
+model.train(Holmes(output_dir))
+
+#####
+
+import os
+
+output_dir = "C:\\Holmes_Training_Data_Preprocessed"
+
+from word2vec_cbow_hs import *
+
+logging.basicConfig(format='%(asctime)s : %(threadName)s : %(levelname)s : %(message)s', level=logging.INFO)
+logging.info("running %s" % " ".join(sys.argv))
+logging.info("using optimization %s" % FAST_VERSION)
+
+seterr(all='raise')  # don't ignore numpy errors
+
+model = Word2Vec(Holmes(output_dir), size=640, window=30, min_count=5, workers=2, alpha_decay = 0.2)
+
+model.alpha = 0.02
+model.alpha_decay = 1/4.
+model.train(Holmes(output_dir))
+
+model.alpha = 0.015
+model.alpha_decay = 1/3.
+model.train(Holmes(output_dir))
+
+model.alpha = 0.01
+model.alpha_decay = 1/2.
+model.train(Holmes(output_dir))
+
+model.alpha = 0.005
+model.alpha_decay = 1.
+model.train(Holmes(output_dir))
+
+#####
+
+import os
+
+output_dir = "C:\\Holmes_Training_Data_Preprocessed"
+
+from word2vec_cbow_hs import *
+
+logging.basicConfig(format='%(asctime)s : %(threadName)s : %(levelname)s : %(message)s', level=logging.INFO)
+logging.info("running %s" % " ".join(sys.argv))
+logging.info("using optimization %s" % FAST_VERSION)
+
+seterr(all='raise')  # don't ignore numpy errors
+
+model = Word2Vec(Holmes(output_dir), size=640, window=100, min_count=5, workers=2, alpha_decay = 0.2)
+
+model.alpha = 0.02
+model.alpha_decay = 1/4.
+model.train(Holmes(output_dir))
+
+model.alpha = 0.015
+model.alpha_decay = 1/3.
+model.train(Holmes(output_dir))
+
+model.alpha = 0.01
+model.alpha_decay = 1/2.
+model.train(Holmes(output_dir))
+
+model.alpha = 0.005
+model.alpha_decay = 1.
+model.train(Holmes(output_dir))
+
+#####
+
+import os
+
+output_dir = "C:\\Holmes_Training_Data_Preprocessed"
+
+from word2vec_cbow_hs import *
+
+logging.basicConfig(format='%(asctime)s : %(threadName)s : %(levelname)s : %(message)s', level=logging.INFO)
+logging.info("running %s" % " ".join(sys.argv))
+logging.info("using optimization %s" % FAST_VERSION)
+
+seterr(all='raise')  # don't ignore numpy errors
+
+model = Word2Vec(Holmes(output_dir), size=640, window=1, min_count=5, workers=2, alpha_decay = 0.2)
+
+model.alpha = 0.02
+model.alpha_decay = 1/4.
+model.train(Holmes(output_dir))
+
+model.alpha = 0.015
+model.alpha_decay = 1/3.
+model.train(Holmes(output_dir))
+
+model.alpha = 0.01
+model.alpha_decay = 1/2.
+model.train(Holmes(output_dir))
+
+model.alpha = 0.005
+model.alpha_decay = 1.
+model.train(Holmes(output_dir))
+
+#####
+
+import os
+
+output_dir = "C:\\Holmes_Training_Data_Preprocessed"
+
+from word2vec_sg_hs import *
+
+logging.basicConfig(format='%(asctime)s : %(threadName)s : %(levelname)s : %(message)s', level=logging.INFO)
+logging.info("running %s" % " ".join(sys.argv))
+logging.info("using optimization %s" % FAST_VERSION)
+
+seterr(all='raise')  # don't ignore numpy errors
+
+n=10
+
+model = Word2Vec(Holmes(output_dir), size=640, window=10, min_count=1, workers=2, alpha_decay = 1./10)
+
+for i in xrange(1,10):
+    model.alpha = 0.025-i*0.025/n
+    model.alpha_decay = 1./(n-i)
+    model.train(Holmes(output_dir))
